@@ -1,0 +1,4 @@
+{
+    "board": "arduino:avr:uno",
+    "sketch": "examples\\CAN_read\\CAN_read.ino"
+}
