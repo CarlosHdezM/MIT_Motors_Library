@@ -4,26 +4,65 @@
 
 #define CS_1 5
 
-//MitMotor motor0(CS_1);
-//MitMotor motor1(MitMotor::GIM, CS_1);
 
+MitMotor motor1(MitMotor::AK_10, CS_1, "AK10 1");
 
 void setup(){
     Serial.begin(115200);
-    //motor0.initialize();
+
+    while(!motor1.initialize()){
+        Serial.print("Retrying to connect to the MCP2515 of motor "); Serial.println(motor1.name);
+        delay(100);
+    }
+    Serial.println("Initialized succesfully");
 }
 
 
 void loop() {
-    Serial.print(MitMotor::AK_10.T_MIN);
-    Serial.print('\t');
-    Serial.println(MitMotor::AK_10.T_MAX);
+    motor1.enterMotorMode();
+    motor1.setCurrent(0.5);
+    motor1.readMotorResponse();
+    motor1.position();
+    motor1.torque();
+    motor1.velocity();
 
-    Serial.print(MitMotor::GIM.T_MIN);
-    Serial.print('\t');
-    Serial.println(MitMotor::GIM.T_MAX);
-    
-    //Serial.print("My max is:" ); Serial.println(motor1.m_motor_type.T_MAX);
+    if(Serial.available()){
+        switch (Serial.read())
+        {
+        case '1':
+            motor1.enterMotorMode();
+            if (motor1.wasResponseReceived()){
+                Serial.print("Position: "); Serial.println(motor1.position(), 4);
+                Serial.print("Torque: "); Serial.println(motor1.torque(), 4);
+                Serial.print("Velocity: "); Serial.println(motor1.velocity(), 4);
+                Serial.println();
+            }
+            else Serial.println("No response");
+            break;
 
-    Serial.println();
+        case '2':
+            if (motor1.setCurrent(0)) Serial.println("Current 0 setpoint sent");
+            else Serial.println("Failed sending the message");
+            break;
+
+        case '3':
+            if (motor1.readMotorResponse()){
+                Serial.print("Position: "); Serial.println(motor1.position(), 4);
+                Serial.print("Torque: "); Serial.println(motor1.torque(), 4);
+                Serial.print("Velocity: "); Serial.println(motor1.velocity(), 4);
+                Serial.println();
+            }
+            else Serial.println("No response");
+            break;
+
+        case '4':
+            if (motor1.setCurrent(0.7)) Serial.println("Current 0.7 setpoint sent");
+            else Serial.println("Failed sending the message");
+            break;
+        
+        default:
+            break;
+        }
+    }
+
 }
