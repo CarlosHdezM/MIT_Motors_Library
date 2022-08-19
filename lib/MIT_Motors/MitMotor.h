@@ -1,12 +1,13 @@
 #pragma once
 
+#include "CAN_Motor.h"
 #include "Arduino.h"
 #include <SPI.h>
 #include <mcp2515.h>
 
 #define DEBUG_ENABLED 1
 
-class MitMotor {
+class MitMotor : public CanMotor{
     public:
         struct MotorType{
             const float T_MIN;
