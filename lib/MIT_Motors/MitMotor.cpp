@@ -66,8 +66,9 @@ bool MitMotor::enterMotorMode(unsigned long timeout_us)
     for(uint i = 0; i < retry_times; i++){    
         m_mcp2515.sendMessage(&can_msg_sent);
         unsigned long t_ini = micros();
-        while ( !readMotorResponse() and (micros()-t_ini) < timeout_us){}
-        if ( !m_response_received){
+        bool was_response_received;
+        while ( !(was_response_received = readMotorResponse()) and (micros()-t_ini) < timeout_us){}
+        if ( !was_response_received){
             Serial.print("******************************\n");
             Serial.print(name); Serial.print(": NO ANSWER \n");
             Serial.print("******************************\n");
@@ -112,7 +113,6 @@ bool MitMotor::readMotorResponse()
     MCP2515::ERROR response_code = m_mcp2515.readMessage(&response_msg);
     if(response_code != MCP2515::ERROR::ERROR_OK)
     {
-        m_response_received = false;
         return false;
     }
     /// unpack ints from can buffer ///
@@ -123,7 +123,6 @@ bool MitMotor::readMotorResponse()
     m_position = (m_uint_to_float(p_int_rx, m_motor_type.P_MIN, m_motor_type.P_MAX, 16))/m_motor_type.P_DIVIDER;
     m_velocity = m_uint_to_float(v_int_rx, m_motor_type.V_MIN, m_motor_type.V_MAX, 12);
     m_torque = m_uint_to_float(t_int_rx, m_motor_type.T_MIN,  m_motor_type.T_MAX, 12);
-    m_response_received = true;
     return true;
 }
 

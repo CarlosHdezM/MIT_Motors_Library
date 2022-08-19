@@ -41,7 +41,6 @@ class MitMotor : public CanMotor{
         const MotorType m_motor_type; //Public for debugging purposes, change to private. 
         const char * name;
         //Public "getters" to motor response variables. 
-        const bool & wasResponseReceived() const {return m_response_received;}
         const float & position() const {return m_position;}
         const float & velocity() const {return m_velocity;}
         const float & torque() const {return m_torque;}
@@ -52,7 +51,6 @@ class MitMotor : public CanMotor{
         float m_position;
         float m_velocity;
         float m_torque;
-        bool m_response_received;
 
         //Private member functions
         void m_updateMotorResponseVariables();

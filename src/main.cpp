@@ -19,19 +19,11 @@ void setup(){
 
 
 void loop() {
-    motor1.enterMotorMode();
-    motor1.setCurrent(0.5);
-    motor1.readMotorResponse();
-    motor1.position();
-    motor1.torque();
-    motor1.velocity();
-
     if(Serial.available()){
         switch (Serial.read())
         {
         case '1':
-            motor1.enterMotorMode();
-            if (motor1.wasResponseReceived()){
+            if (motor1.enterMotorMode()){
                 Serial.print("Position: "); Serial.println(motor1.position(), 4);
                 Serial.print("Torque: "); Serial.println(motor1.torque(), 4);
                 Serial.print("Velocity: "); Serial.println(motor1.velocity(), 4);
@@ -59,7 +51,7 @@ void loop() {
             if (motor1.setCurrent(0.7)) Serial.println("Current 0.7 setpoint sent");
             else Serial.println("Failed sending the message");
             break;
-        
+
         default:
             break;
         }
