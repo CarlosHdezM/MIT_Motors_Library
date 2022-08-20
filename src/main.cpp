@@ -1,11 +1,14 @@
 #include "Arduino.h"
+
 #include "MitMotor.h"
+#include "RmdMotor.h"
 
 
 #define CS_1 5
 
 
-MitMotor motor1(MitMotor::AK_10, CS_1, "AK10 1");
+//MitMotor motor1(MitMotor::AK_10, CS_1, "AK10 1");
+RmdMotor motor1(RmdMotor::RMD_X6, CS_1, "RMD_X6");
 
 void setup(){
     Serial.begin(115200);

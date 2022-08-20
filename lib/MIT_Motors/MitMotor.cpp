@@ -1,7 +1,7 @@
 #include "MitMotor.h"
-#define TURN_ON_LAST_BYTE  0XFC
-#define TURN_OFF_LAST_BYTE 0XFD
-#define SET_ZERO_LAST_BYTE 0XFE
+#define TURN_ON_COMMAND  0XFC
+#define TURN_OFF_COMMAND 0XFD
+#define SET_ZERO_COMMAND 0XFE
 
 
 //Definition of static constants. 
@@ -25,57 +25,53 @@ MitMotor::MitMotor(const MotorType & motor_type, const uint8_t _CS,const char * 
 
 bool MitMotor::turnOn()
 {
-    return m_sendOnOffZero(TURN_ON_LAST_BYTE);
+    can_frame can_msg;
+    can_msg.can_id  = 0x01;
+    can_msg.can_dlc = 0x08;
+    can_msg.data[0] = 0xFF;
+    can_msg.data[1] = 0xFF;
+    can_msg.data[2] = 0xFF;
+    can_msg.data[3] = 0xFF;
+    can_msg.data[4] = 0xFF;
+    can_msg.data[5] = 0xFF;
+    can_msg.data[6] = 0xFF;
+    can_msg.data[7] = TURN_ON_COMMAND;
+    return m_sendAndReceiveBlocking(can_msg, 2000000);
 }
 
 
 bool MitMotor::turnOff()
 {
-    return m_sendOnOffZero(TURN_OFF_LAST_BYTE);
+    can_frame can_msg;
+    can_msg.can_id  = 0x01;
+    can_msg.can_dlc = 0x08;
+    can_msg.data[0] = 0xFF;
+    can_msg.data[1] = 0xFF;
+    can_msg.data[2] = 0xFF;
+    can_msg.data[3] = 0xFF;
+    can_msg.data[4] = 0xFF;
+    can_msg.data[5] = 0xFF;
+    can_msg.data[6] = 0xFF;
+    can_msg.data[7] = TURN_OFF_COMMAND;
+    return m_sendAndReceiveBlocking(can_msg, 2000000);
 }
 
 
 bool MitMotor::setCurrentPositionAsZero()
 {
-    return m_sendOnOffZero(SET_ZERO_LAST_BYTE);
+    can_frame can_msg;
+    can_msg.can_id  = 0x01;
+    can_msg.can_dlc = 0x08;
+    can_msg.data[0] = 0xFF;
+    can_msg.data[1] = 0xFF;
+    can_msg.data[2] = 0xFF;
+    can_msg.data[3] = 0xFF;
+    can_msg.data[4] = 0xFF;
+    can_msg.data[5] = 0xFF;
+    can_msg.data[6] = 0xFF;
+    can_msg.data[7] = SET_ZERO_COMMAND;
+    return m_sendAndReceiveBlocking(can_msg, 2000000);
 }
-
-
-bool MitMotor::m_sendOnOffZero(unsigned char last_byte)
-{
-    constexpr uint8_t succesful_times_required = 1;
-    constexpr unsigned long timeout_us = 2000000;
-    can_frame can_msg_sent;
-    can_msg_sent.can_id  = 0x01;
-    can_msg_sent.can_dlc = 0x08;
-    can_msg_sent.data[0] = 0xFF;
-    can_msg_sent.data[1] = 0xFF;
-    can_msg_sent.data[2] = 0xFF;
-    can_msg_sent.data[3] = 0xFF;
-    can_msg_sent.data[4] = 0xFF;
-    can_msg_sent.data[5] = 0xFF;
-    can_msg_sent.data[6] = 0xFF;
-    can_msg_sent.data[7] = last_byte;
-    for(uint i = 0; i < succesful_times_required; i++){    
-        m_mcp2515.sendMessage(&can_msg_sent);
-        unsigned long t_ini = micros();
-        bool was_response_received;
-        while ( !(was_response_received = readMotorResponse()) and (micros()-t_ini) < timeout_us)
-        {
-            /*Serial.println("Waiting Response");*/
-        }
-        if ( !was_response_received){
-            Serial.print(m_name); Serial.print(": NO ANSWER \n");
-            return false;
-        }
-        else 
-        { 
-            //Serial.print("Success time: "); Serial.println(i+1);
-        }
-    }
-    return true;
-}
-
 
 
 bool MitMotor::setCurrent(float current_setpoint, unsigned long timeout_us){

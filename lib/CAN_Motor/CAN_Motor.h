@@ -4,6 +4,9 @@
 #include <SPI.h>
 #include <mcp2515.h>
 
+#define DEBUG_ENABLED 1
+
+
 class CanMotor{
     public:
         CanMotor(const uint8_t _CS, const char * motor_name = "DEFAULT_NAME", SPIClass & spi = SPI, const bool doBegin = true);
@@ -28,5 +31,8 @@ class CanMotor{
         const char * m_name;
         can_frame response_msg;
         MCP2515 m_mcp2515;
+        //Protected methods.
+        bool m_sendAndReceiveBlocking(const can_frame & can_msg , unsigned long timeout_us);
+
 
 };

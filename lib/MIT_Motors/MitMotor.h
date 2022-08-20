@@ -26,9 +26,8 @@ class MitMotor : public CanMotor{
         static const MotorType AK_10;
         static const MotorType GIM;
 
-        //Public member functions
+        //Public member functions common for all CAN motors:
         MitMotor(const MotorType & motor_type, const uint8_t _CS, const char * motor_name = "DEFAULT_NAME", SPIClass & spi = SPI, const bool doBegin = true);
-        //Public member functions we are overriding:
         bool turnOn() override;
         bool turnOff() override;
         bool setCurrentPositionAsZero() override;
@@ -36,7 +35,7 @@ class MitMotor : public CanMotor{
         bool setCurrent(float current_setpoint, unsigned long timeout_us) override;
         bool readMotorResponse() override;
         bool readMotorResponse(unsigned long timeout_us) override;
-
+        //Public member functions exclusive for MIT Motors.
 
     private:
         //Private member variables
@@ -44,7 +43,6 @@ class MitMotor : public CanMotor{
 
 
         //Private member functions
-        bool m_sendOnOffZero(unsigned char last_byte);
         unsigned int m_float_to_uint(float x, float x_min, float x_max, int bits);
         float m_uint_to_float(unsigned int x_int, float x_min, float x_max, int bits);
 
