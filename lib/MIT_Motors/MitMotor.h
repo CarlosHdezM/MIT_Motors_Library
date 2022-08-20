@@ -26,34 +26,25 @@ class MitMotor : public CanMotor{
         static const MotorType AK_10;
         static const MotorType GIM;
 
-        //Public member variables
-        can_frame response_msg;     //Tal vez convenga hacerla privada en el futuro.
-
         //Public member functions
         MitMotor(const MotorType & motor_type, const uint8_t _CS, const char * motor_name = "DEFAULT_NAME", SPIClass & spi = SPI, const bool doBegin = true);
-        bool initialize(const CAN_SPEED can_speed = CAN_1000KBPS, CAN_CLOCK can_clock = MCP_16MHZ);
-        bool enterMotorMode(unsigned long timeout_us = 5000);
-        void exitMotorMode();
-        void setCurrentPositionAsZero();
-        bool setCurrent(float current_setpoint);
-        bool readMotorResponse();
-        MCP2515::ERROR cmd_cero_ak();
-        const MotorType m_motor_type; //Public for debugging purposes, change to private. 
-        const char * name;
-        //Public "getters" to motor response variables. 
-        const float & position() const {return m_position;}
-        const float & velocity() const {return m_velocity;}
-        const float & torque() const {return m_torque;}
+        //Public member functions we are overriding:
+        bool turnOn() override;
+        bool turnOff() override;
+        bool setCurrentPositionAsZero() override;
+        bool setCurrent(float current_setpoint) override;
+        bool setCurrent(float current_setpoint, unsigned long timeout_us) override;
+        bool readMotorResponse() override;
+        bool readMotorResponse(unsigned long timeout_us) override;
+
 
     private:
         //Private member variables
-        MCP2515 m_mcp2515;
-        float m_position;
-        float m_velocity;
-        float m_torque;
+        const MotorType m_motor_type;
+
 
         //Private member functions
-        void m_updateMotorResponseVariables();
+        bool m_sendOnOffZero(unsigned char last_byte);
         unsigned int m_float_to_uint(float x, float x_min, float x_max, int bits);
         float m_uint_to_float(unsigned int x_int, float x_min, float x_max, int bits);
 

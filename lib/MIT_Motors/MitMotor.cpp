@@ -1,4 +1,8 @@
 #include "MitMotor.h"
+#define TURN_ON_LAST_BYTE  0XFC
+#define TURN_OFF_LAST_BYTE 0XFD
+#define SET_ZERO_LAST_BYTE 0XFE
+
 
 //Definition of static constants. 
 const MitMotor::MotorType MitMotor::AK_10{-18.0f, 18.0f, 1.0f};
@@ -14,44 +18,33 @@ const float MitMotor::MotorType::KD_MAX = 5.0f;
 
 
 MitMotor::MitMotor(const MotorType & motor_type, const uint8_t _CS,const char * motor_name, SPIClass & spi, const bool doBegin)
-    : m_motor_type(motor_type), name(motor_name), m_mcp2515{_CS, spi, doBegin}
+    : CanMotor{_CS, motor_name, spi, doBegin}, m_motor_type(motor_type) 
 {
 }
 
 
-bool MitMotor::initialize(const CAN_SPEED can_speed, CAN_CLOCK can_clock)
+bool MitMotor::turnOn()
 {
-    #if DEBUG_ENABLED
-        Serial.print("Initializing motor: "); Serial.println(name);
-    #endif
-    if ( m_mcp2515.reset() != MCP2515::ERROR_OK)
-    {
-        #if DEBUG_ENABLED
-            Serial.println("!!!Error Resetting MCP2515.");
-        #endif
-        return false;
-    }
-    if ( m_mcp2515.setBitrate(can_speed, can_clock) != MCP2515::ERROR_OK)
-    {
-        #if DEBUG_ENABLED
-            Serial.println("!!!Error Setting MCP2515 Bitrate.");
-        #endif
-        return false;
-    }
-    if ( m_mcp2515.setNormalMode() != MCP2515::ERROR_OK)
-    {
-        #if DEBUG_ENABLED
-            Serial.println("!!!Error Setting MCP2515 normal mode.");
-        #endif
-        return false;
-    }
-    return true;
+    return m_sendOnOffZero(TURN_ON_LAST_BYTE);
 }
 
 
-bool MitMotor::enterMotorMode(unsigned long timeout_us)
+bool MitMotor::turnOff()
 {
-    constexpr uint8_t retry_times = 3;
+    return m_sendOnOffZero(TURN_OFF_LAST_BYTE);
+}
+
+
+bool MitMotor::setCurrentPositionAsZero()
+{
+    return m_sendOnOffZero(SET_ZERO_LAST_BYTE);
+}
+
+
+bool MitMotor::m_sendOnOffZero(unsigned char last_byte)
+{
+    constexpr uint8_t succesful_times_required = 1;
+    constexpr unsigned long timeout_us = 2000000;
     can_frame can_msg_sent;
     can_msg_sent.can_id  = 0x01;
     can_msg_sent.can_dlc = 0x08;
@@ -62,20 +55,37 @@ bool MitMotor::enterMotorMode(unsigned long timeout_us)
     can_msg_sent.data[4] = 0xFF;
     can_msg_sent.data[5] = 0xFF;
     can_msg_sent.data[6] = 0xFF;
-    can_msg_sent.data[7] = 0xFC;
-    for(uint i = 0; i < retry_times; i++){    
+    can_msg_sent.data[7] = last_byte;
+    for(uint i = 0; i < succesful_times_required; i++){    
         m_mcp2515.sendMessage(&can_msg_sent);
         unsigned long t_ini = micros();
         bool was_response_received;
-        while ( !(was_response_received = readMotorResponse()) and (micros()-t_ini) < timeout_us){}
+        while ( !(was_response_received = readMotorResponse()) and (micros()-t_ini) < timeout_us)
+        {
+            /*Serial.println("Waiting Response");*/
+        }
         if ( !was_response_received){
-            Serial.print("******************************\n");
-            Serial.print(name); Serial.print(": NO ANSWER \n");
-            Serial.print("******************************\n");
+            Serial.print(m_name); Serial.print(": NO ANSWER \n");
             return false;
+        }
+        else 
+        { 
+            //Serial.print("Success time: "); Serial.println(i+1);
         }
     }
     return true;
+}
+
+
+
+bool MitMotor::setCurrent(float current_setpoint, unsigned long timeout_us){
+    bool was_message_sent;
+    unsigned long t_ini = micros();
+    while(!(was_message_sent = setCurrent(current_setpoint)) and (micros()-t_ini) < timeout_us)
+    {
+        //Serial.println("Send Retry!");           
+    }
+    return was_message_sent;
 }
 
 
@@ -104,6 +114,19 @@ bool MitMotor::setCurrent(float current_setpoint ){
     can_msg.data[6] = ((kd_int & 0xF) << 4) | (t_int >> 8);
     can_msg.data[7] = t_int & 0xFF;
     return m_mcp2515.sendMessage(&can_msg) == MCP2515::ERROR_OK ? true : false;
+}
+
+
+
+bool MitMotor::readMotorResponse(unsigned long timeout_us)
+{
+    bool was_response_received;
+    unsigned long t_ini = micros();
+    while(!(was_response_received = readMotorResponse()) and (micros()-t_ini) < timeout_us)
+    {
+        //Serial.println("Waiting for response!");           
+    }
+    return was_response_received;
 }
 
 
