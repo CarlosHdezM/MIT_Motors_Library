@@ -15,6 +15,7 @@ class RmdMotor : public CanMotor{
         static const MotorType RMD_X8;
 
         //Public member functions exlusive for RMD motors
+        bool requestPosition();
 
         //Public member functions shared by all CAN motor types. 
         RmdMotor(const MotorType & motor_type, const uint8_t _CS, const char * motor_name = "DEFAULT_RMD", SPIClass & spi = SPI, const bool doBegin = true);
@@ -25,8 +26,8 @@ class RmdMotor : public CanMotor{
         bool setCurrent(float current_setpoint, unsigned long timeout_us) override;
         bool readMotorResponse() override;
         bool readMotorResponse(unsigned long timeout_us) override;
-        //Public member functions exclusive for the RMD motors
-        bool requestPosition();
+        
+       
 
 
     private:
