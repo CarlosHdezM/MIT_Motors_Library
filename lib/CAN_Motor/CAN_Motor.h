@@ -34,5 +34,4 @@ class CanMotor{
         //Protected methods.
         bool m_sendAndReceiveBlocking(const can_frame & can_msg , unsigned long timeout_us);
 
-
 };

@@ -7,8 +7,16 @@
 #define CS_1 5
 
 
-//MitMotor motor1(MitMotor::AK_10, CS_1, "AK10 1");
-RmdMotor motor1(RmdMotor::RMD_X6, CS_1, "RMD_X6");
+#define MOTOR_RMD 1
+
+#if MOTOR_RMD
+    RmdMotor motor1(RmdMotor::RMD_X6, CS_1, "RMD_X6");
+
+#else
+    MitMotor motor1(MitMotor::AK_10, CS_1, "AK10 1");
+
+#endif
+
 
 void setup(){
     Serial.begin(115200);
@@ -59,11 +67,18 @@ void loop() {
             break;
 
         case '4':
-            if (motor1.setCurrent(0.7)) Serial.println("Current 0.7 setpoint sent");
-            else Serial.println("Failed sending the message");
+            #if MOTOR_RMD
+                if (motor1.requestPosition()) Serial.println("Sent CAN message to request position");
+                else Serial.println("Failed sending the message");
+            #endif
             break;
 
         case '5':
+            if (motor1.setCurrent(50)) Serial.println("Current 50 setpoint sent");
+            else Serial.println("Failed sending the message");
+            break;
+
+        case '6':
             while(1){
                 if(!motor1.setCurrent(0,1000)) Serial.println("Message NOT Sent");
                 if(motor1.readMotorResponse(1000)){

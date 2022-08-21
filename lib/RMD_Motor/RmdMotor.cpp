@@ -7,7 +7,7 @@
 #define TURN_OFF_COMMAND      0X80
 #define UPDATE_STATUS_COMMAND 0x9C
 //Conversiones
-#define CONV_TORQUE 0.016f  //NO ES EL VALOR CORRECTO!, REVISAR CON CONTROL
+#define CONV_TORQUE 1.0f  //NO ES EL VALOR CORRECTO!, REVISAR CON CONTROL
 #define CONV                  600.0f       //SOLO PARA LOS RMD X6
 #define RAD                   0.0174533 //(pi/180)grad to rad 
 
