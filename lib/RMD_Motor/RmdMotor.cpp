@@ -7,12 +7,20 @@
 #define SET_ZERO_POS_COMMAND  0x19
 #define TURN_OFF_COMMAND      0X80
 #define UPDATE_STATUS_COMMAND 0x9C
-
+//Motors Parameters
+#define REDUCTION_6_TO_1      6.0f
+#define REDUCTION_9_TO_1      9.0f
+#define X6_KT                 0.88f
+#define X8_PRO_KT             2.6f
+#define X8_KT                 2.09f
+//Conversion Constants
+#define AMPS_TO_RAW           62.5f           //Constant to convert from Amperes to RAW (in the motor manufacturer range).
+#define RAD                   0.01745329251   //(pi/180)grad to rad 
 
 
 //Definition of static constants. 
-const RmdMotor::MotorType RmdMotor::RMD_X6{X6_6_REDUCTION, X6_KT};
-const RmdMotor::MotorType RmdMotor::RMD_X8{X8_6_REDUCTION, X8_KT};
+const RmdMotor::MotorType RmdMotor::RMD_X6{REDUCTION_6_TO_1, X6_KT};
+const RmdMotor::MotorType RmdMotor::RMD_X8{REDUCTION_6_TO_1, X8_KT};
 
 
 union torque_msg_tx
