@@ -1,4 +1,5 @@
 #include "RmdMotor.h"
+#include "Rmd_motors_constants.h"
 
 //Commands
 #define SET_TORQUE_COMMAND    0xA1
@@ -6,18 +7,12 @@
 #define SET_ZERO_POS_COMMAND  0x19
 #define TURN_OFF_COMMAND      0X80
 #define UPDATE_STATUS_COMMAND 0x9C
-//Conversiones
-#define KT_RMDX6        0.88
-#define KT_RMDX8PRO     2.6 
-#define KT_X8           2.09
-#define KIR             62.5      //Constante de corriente a rango de motor (I_MAX/R_MAX) 
-#define CONV            600.0f    
-#define RAD             0.0174533 //(pi/180)grad to rad 
+
 
 
 //Definition of static constants. 
-const RmdMotor::MotorType RmdMotor::RMD_X6{};
-const RmdMotor::MotorType RmdMotor::RMD_X8{};
+const RmdMotor::MotorType RmdMotor::RMD_X6{X6_6_REDUCTION, X6_KT};
+const RmdMotor::MotorType RmdMotor::RMD_X8{X8_6_REDUCTION, X8_KT};
 
 
 union torque_msg_tx
@@ -80,7 +75,7 @@ bool RmdMotor::setCurrent(float current_setpoint)
 {
     can_frame can_msg;
     torque_msg_tx msg_tx;
-    msg_tx.values.torque = (int16_t)(((current_setpoint)/KT_RMDX6)*KIR);
+    msg_tx.values.torque = (int16_t)(((current_setpoint)/m_motor_type.KT)*AMPS_TO_RAW);
     can_msg.can_id  = 0x141;
     can_msg.can_dlc = 0x08;
     can_msg.data[0] = SET_TORQUE_COMMAND;
@@ -147,7 +142,7 @@ bool RmdMotor::m_read_MCP_buffers()
             break;
 
         case REQUEST_POS_COMMAND:
-            m_position = ((((response_msg.data[4] << 24) | (response_msg.data[3] << 16) | (response_msg.data[2] << 8) | (response_msg.data[1])))/ CONV);//* RAD;
+            m_position = ((((response_msg.data[4] << 24) | (response_msg.data[3] << 16) | (response_msg.data[2] << 8) | (response_msg.data[1])))/(m_motor_type.reduction * 100.0));//* RAD;
             break;
             
         case SET_ZERO_POS_COMMAND:

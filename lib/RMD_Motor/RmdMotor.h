@@ -9,7 +9,9 @@
 class RmdMotor : public CanMotor{
     public:
         struct MotorType{
-            //constexpr MotorType(float t_min, float t_max, float p_div) : T_MIN(t_min), T_MAX(t_max), P_DIVIDER(p_div){}  //Constructor
+            const float reduction;
+            const float KT;
+            constexpr MotorType(float _reduction, float _kt) : reduction(_reduction), KT(_kt){}  //Constructor
         };
         static const MotorType RMD_X6;
         static const MotorType RMD_X8;
@@ -28,7 +30,6 @@ class RmdMotor : public CanMotor{
         bool readMotorResponse(unsigned long timeout_us) override;
         
        
-
 
     private:
         //Private member variables
