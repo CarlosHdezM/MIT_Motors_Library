@@ -43,7 +43,7 @@ class MitMotor : public CanMotor{
 
 
         //Private member functions
-        unsigned int m_float_to_uint(float x, float x_min, float x_max, int bits);
+        unsigned int m_float_to_uint(float x, float x_min, float x_max);
         float m_uint_to_float(unsigned int x_int, float x_min, float x_max, int bits);
 
 };

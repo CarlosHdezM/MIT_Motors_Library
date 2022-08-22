@@ -91,23 +91,17 @@ bool MitMotor::setCurrent(float current_setpoint ){
 
     /// limit data to be within bounds ///
     float t_ff = constrain(current_setpoint, m_motor_type.T_MIN, m_motor_type.T_MAX);
-
-    /// convert floats to unsigned ints ///
-    unsigned int p_int  = m_float_to_uint(0, m_motor_type.P_MIN, m_motor_type.P_MAX, 16);
-    unsigned int v_int  = m_float_to_uint(0, m_motor_type.V_MIN, m_motor_type.V_MAX, 12);
-    unsigned int kp_int = m_float_to_uint(0, m_motor_type.KP_MIN, m_motor_type.KP_MAX, 12);
-    unsigned int kd_int = m_float_to_uint(0, m_motor_type.KD_MIN, m_motor_type.KD_MAX, 12);
-    unsigned int t_int  = m_float_to_uint(t_ff, m_motor_type.T_MIN, m_motor_type.T_MAX, 12);
+    unsigned int t_int  = m_float_to_uint(t_ff, m_motor_type.T_MIN, m_motor_type.T_MAX);
 
     can_msg.can_id  = 0x01;
     can_msg.can_dlc = 0x08;
-    can_msg.data[0] = p_int >> 8;;
-    can_msg.data[1] = p_int & 0xFF;
-    can_msg.data[2] = v_int >> 4;
-    can_msg.data[3] = ((v_int & 0xF) << 4) | (kp_int >> 8);
-    can_msg.data[4] = kp_int & 0xFF;
-    can_msg.data[5] = kd_int >> 4;
-    can_msg.data[6] = ((kd_int & 0xF) << 4) | (t_int >> 8);
+    can_msg.data[0] = 0x7F;
+    can_msg.data[1] = 0xFF;
+    can_msg.data[2] = 0x7F;
+    can_msg.data[3] = 0xf0;
+    can_msg.data[4] = 0x0;
+    can_msg.data[5] = 0x0;
+    can_msg.data[6] = t_int >> 8;
     can_msg.data[7] = t_int & 0xFF;
     return m_mcp2515.sendMessage(&can_msg) == MCP2515::ERROR_OK ? true : false;
 }
@@ -147,21 +141,12 @@ bool MitMotor::readMotorResponse()
 
 
 
-unsigned int MitMotor::m_float_to_uint(float x, float x_min, float x_max, int bits) 
+unsigned int MitMotor::m_float_to_uint(float x, float x_min, float x_max) 
 {
     /// Converts a float to an unsigned int, given range and number of bits ///
     float span = x_max - x_min;
     float offset = x_min;
-    unsigned int pgg = 0;
-    if (bits == 12) 
-    {
-        pgg = (unsigned int) ((x - offset) * 4095.0 / span);
-    }
-    if (bits == 16) 
-    {
-        pgg = (unsigned int) ((x - offset) * 65535.0 / span);
-    }
-    return pgg;
+    return (unsigned int) ((x - offset) * 4095.0 / span);
 }
 
 
