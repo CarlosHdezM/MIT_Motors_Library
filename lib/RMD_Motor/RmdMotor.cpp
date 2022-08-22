@@ -1,5 +1,4 @@
 #include "RmdMotor.h"
-#include "Rmd_motors_constants.h"
 
 //Commands
 #define SET_TORQUE_COMMAND    0xA1
