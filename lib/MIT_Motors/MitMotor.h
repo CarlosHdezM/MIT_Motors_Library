@@ -35,6 +35,8 @@ class MitMotor : public CanMotor{
         bool setCurrent(float current_setpoint, unsigned long timeout_us) override;
         bool readMotorResponse() override;
         bool readMotorResponse(unsigned long timeout_us) override;
+        bool setCurrentPositionAsOrigin() override;
+
         //Public member functions exclusive for MIT Motors.
 
     private:

@@ -5,7 +5,7 @@
 
 
 CanMotor::CanMotor(const uint8_t _CS,const char * motor_name, SPIClass & spi, const bool doBegin)
-    : m_name(motor_name), m_mcp2515{_CS, spi, doBegin}
+    : m_name(motor_name), m_mcp2515{_CS, spi, doBegin}, m_torque(0), m_position(0), m_velocity(0), m_offset_from_zero_motor(0)
 {
 }
 

@@ -28,8 +28,8 @@ class RmdMotor : public CanMotor{
         bool setCurrent(float current_setpoint, unsigned long timeout_us) override;
         bool readMotorResponse() override;
         bool readMotorResponse(unsigned long timeout_us) override;
-        
-       
+        bool setCurrentPositionAsOrigin() override;
+
 
     private:
         //Private member variables

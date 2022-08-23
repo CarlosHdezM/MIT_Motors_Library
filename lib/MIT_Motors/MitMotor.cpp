@@ -71,7 +71,7 @@ bool MitMotor::setCurrentPositionAsZero()
     can_msg.data[6] = 0xFF;
     can_msg.data[7] = SET_ZERO_COMMAND;
     if (!m_sendAndReceiveBlocking(can_msg, 2000000)) return false;
-    return turnOn();        //This second command is used to get a correct new position value, since the SET_ZERO_COMMAND returns the motor position BEFORE the new zero was set.
+    return setCurrentPositionAsOrigin(); //This second command is used ALSO to get a correct new position value, since the SET_ZERO_COMMAND returns the motor position BEFORE the new zero was set.
 }
 
 
@@ -137,6 +137,14 @@ bool MitMotor::readMotorResponse()
     m_position = (m_uint_to_float(p_int_rx, m_motor_type.P_MIN, m_motor_type.P_MAX, 16))/m_motor_type.P_DIVIDER;
     m_velocity = m_uint_to_float(v_int_rx, m_motor_type.V_MIN, m_motor_type.V_MAX, 12);
     m_torque = m_uint_to_float(t_int_rx, m_motor_type.T_MIN,  m_motor_type.T_MAX, 12);
+    return true;
+}
+
+
+
+bool MitMotor::setCurrentPositionAsOrigin(){
+    if (!turnOn()) return false;
+    m_offset_from_zero_motor = m_position;
     return true;
 }
 

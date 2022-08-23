@@ -149,7 +149,7 @@ bool RmdMotor::m_read_MCP_buffers()
             break;
 
         case REQUEST_POS_COMMAND:
-            m_position = ((((response_msg.data[4] << 24) | (response_msg.data[3] << 16) | (response_msg.data[2] << 8) | (response_msg.data[1])))/(m_motor_type.reduction * 100.0));//* RAD;
+            m_position = (((((response_msg.data[4] << 24) | (response_msg.data[3] << 16) | (response_msg.data[2] << 8) | (response_msg.data[1])))/(m_motor_type.reduction * 100.0))* RAD);
             break;
             
         case SET_ZERO_POS_COMMAND:
@@ -224,8 +224,34 @@ bool RmdMotor::setCurrentPositionAsZero()
     can_msg.data[5] = 0x00;
     can_msg.data[6] = 0x00;
     can_msg.data[7] = 0x00;
-    return m_sendAndReceiveBlocking(can_msg, 1000000);
+    if (!m_sendAndReceiveBlocking(can_msg, 1000000)) return false;
+    m_offset_from_zero_motor = m_position;
+    return true;
 }
+
+
+
+bool RmdMotor::setCurrentPositionAsOrigin(){
+    can_frame can_msg;
+    can_msg.can_id  = 0x141;
+    can_msg.can_dlc = 0x08;
+    can_msg.data[0] = REQUEST_POS_COMMAND;
+    can_msg.data[1] = 0x00;
+    can_msg.data[2] = 0x00;
+    can_msg.data[3] = 0x00;
+    can_msg.data[4] = 0x00;
+    can_msg.data[5] = 0x00;
+    can_msg.data[6] = 0x00;
+    can_msg.data[7] = 0x00;
+    //actualizar m_offset... con el nuevo valor de posición. 
+    if (! m_sendAndReceiveBlocking(can_msg, 1000000))
+    {
+        return false;
+    }
+    m_offset_from_zero_motor = m_position;
+    return true;
+}
+
 
 
 

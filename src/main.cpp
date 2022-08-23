@@ -5,7 +5,7 @@
  
 
 #define CS_1 5
-
+#define PIN_BOTON 26
 
 #define MOTOR_RMD 0
 
@@ -20,6 +20,8 @@
 
 void setup(){
     Serial.begin(115200);
+
+    pinMode(PIN_BOTON, INPUT_PULLUP);   
 
     while(!motor1.initialize()){
         Serial.print("Retrying to connect to the MCP2515 of motor "); Serial.println(motor1.name());
@@ -79,7 +81,7 @@ void loop() {
             break;
 
         case '6':
-            while(1){
+            while(digitalRead(PIN_BOTON)){
                 if(!motor1.setCurrent(0,1000)) Serial.println("Message NOT Sent");
                 if(motor1.readMotorResponse(2000)){
                     Serial.print("Position: "); Serial.print(motor1.position(), 4);
@@ -91,6 +93,15 @@ void loop() {
                     Serial.println("No response received!!!");
                 }
             }
+            break;
+
+        case '7':
+            if (motor1.setCurrentPositionAsOrigin()){
+                Serial.print("Position: "); Serial.print(motor1.position(), 4);
+                Serial.print("\tTorque: "); Serial.print(motor1.torque(), 4);
+                Serial.print("\tVelocity: "); Serial.println(motor1.velocity(), 4);
+            }
+            else {Serial.println("Failed setting current position as origin. Quecuriosojorge");}
             break;
 
         case 'Z':
