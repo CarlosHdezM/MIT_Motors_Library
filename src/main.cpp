@@ -7,13 +7,13 @@
 #define CS_1 5
 
 
-#define MOTOR_RMD 1
+#define MOTOR_RMD 0
 
 #if MOTOR_RMD
     RmdMotor motor1(RmdMotor::RMD_X6, CS_1, "RMD_X6");
 
 #else
-    MitMotor motor1(MitMotor::AK_10, CS_1, "AK10 1");
+    MitMotor motor1(MitMotor::GIM, CS_1, "AK10 1");
 
 #endif
 
@@ -81,11 +81,11 @@ void loop() {
         case '6':
             while(1){
                 if(!motor1.setCurrent(0,1000)) Serial.println("Message NOT Sent");
-                if(motor1.readMotorResponse(1000)){
-                    //Serial.print("Position: "); Serial.print(motor1.position(), 4);
-                    //Serial.print("\tTorque: "); Serial.print(motor1.torque(), 4);
-                    //Serial.print("\tVelocity: "); Serial.println(motor1.velocity(), 4);
-                    //Serial.println();
+                if(motor1.readMotorResponse(2000)){
+                    Serial.print("Position: "); Serial.print(motor1.position(), 4);
+                    Serial.print("\tTorque: "); Serial.print(motor1.torque(), 4);
+                    Serial.print("\tVelocity: "); Serial.println(motor1.velocity(), 4);
+                    Serial.println();
                 }
                 else {
                     Serial.println("No response received!!!");

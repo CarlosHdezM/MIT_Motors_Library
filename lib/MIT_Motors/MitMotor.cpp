@@ -6,7 +6,7 @@
 
 //Definition of static constants. 
 const MitMotor::MotorType MitMotor::AK_10{-18.0f, 18.0f, 1.0f};
-const MitMotor::MotorType MitMotor::GIM{-4.0f, 4.0f, 4.0f};
+const MitMotor::MotorType MitMotor::GIM{-4.0f, 4.0f, -4.0f};
 const float MitMotor::MotorType::P_MIN = -12.5f;
 const float MitMotor::MotorType::P_MAX =  12.5f;
 const float MitMotor::MotorType::V_MIN = -65.0f;
@@ -70,7 +70,8 @@ bool MitMotor::setCurrentPositionAsZero()
     can_msg.data[5] = 0xFF;
     can_msg.data[6] = 0xFF;
     can_msg.data[7] = SET_ZERO_COMMAND;
-    return m_sendAndReceiveBlocking(can_msg, 2000000);
+    if (!m_sendAndReceiveBlocking(can_msg, 2000000)) return false;
+    return turnOn();        //This second command is used to get a correct new position value, since the SET_ZERO_COMMAND returns the motor position BEFORE the new zero was set.
 }
 
 
