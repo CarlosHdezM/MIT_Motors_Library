@@ -37,8 +37,5 @@ class RmdMotor : public CanMotor{
         uint8_t m_temperature;
 
 
-        //Private member functions
-        bool m_read_MCP_buffers();
-
 
 };

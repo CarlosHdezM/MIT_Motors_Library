@@ -35,5 +35,7 @@ class CanMotor{
         MCP2515 m_mcp2515;
         //Protected methods.
         bool m_sendAndReceiveBlocking(const can_frame & can_msg , unsigned long timeout_us);
+        void m_emptyMCP2515buffer();
+
 
 };

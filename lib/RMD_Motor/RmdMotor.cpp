@@ -78,6 +78,17 @@ RmdMotor::RmdMotor(const MotorType & motor_type, const uint8_t _CS,const char * 
 }
 
 
+bool RmdMotor::setCurrent(float current_setpoint, unsigned long timeout_us){
+    bool was_message_sent;
+    unsigned long t_ini = micros();
+    while(!(was_message_sent = setCurrent(current_setpoint)) and (micros()-t_ini) < timeout_us)
+    {
+        //Serial.println("Send Retry!");           
+    }
+    return was_message_sent;
+}
+
+
 bool RmdMotor::setCurrent(float current_setpoint)
 {
     can_frame can_msg;
@@ -97,32 +108,21 @@ bool RmdMotor::setCurrent(float current_setpoint)
 }
 
 
+
+bool RmdMotor::readMotorResponse(unsigned long timeout_us)
+{
+    bool was_response_received;
+    unsigned long t_ini = micros();
+    while(!(was_response_received = readMotorResponse()) and (micros()-t_ini) < timeout_us)
+    {
+        //Serial.println("Waiting for response!");           
+    }
+    return was_response_received;
+}
+
+
+
 bool RmdMotor::readMotorResponse()
-{
-    return m_read_MCP_buffers();
-}
-
-
-
-bool RmdMotor::requestPosition()
-{
-    can_frame can_msg;
-    can_msg.can_id  = 0x141;
-    can_msg.can_dlc = 0x08;
-    can_msg.data[0] = REQUEST_POS_COMMAND;
-    can_msg.data[1] = 0x00;
-    can_msg.data[2] = 0x00;
-    can_msg.data[3] = 0x00;
-    can_msg.data[4] = 0x00;
-    can_msg.data[5] = 0x00;
-    can_msg.data[6] = 0x00;
-    can_msg.data[7] = 0x00;
-    return (m_mcp2515.sendMessage(&can_msg) == MCP2515::ERROR_OK) ? true : false;
-}
-
-
-
-bool RmdMotor::m_read_MCP_buffers()
 {
     torque_msg_rx msg_rx;  
     if(m_mcp2515.readMessage(&response_msg) != MCP2515::ERROR::ERROR_OK)
@@ -168,6 +168,25 @@ bool RmdMotor::m_read_MCP_buffers()
     }
     return true;    
 }
+
+
+
+bool RmdMotor::requestPosition()
+{
+    can_frame can_msg;
+    can_msg.can_id  = 0x141;
+    can_msg.can_dlc = 0x08;
+    can_msg.data[0] = REQUEST_POS_COMMAND;
+    can_msg.data[1] = 0x00;
+    can_msg.data[2] = 0x00;
+    can_msg.data[3] = 0x00;
+    can_msg.data[4] = 0x00;
+    can_msg.data[5] = 0x00;
+    can_msg.data[6] = 0x00;
+    can_msg.data[7] = 0x00;
+    return (m_mcp2515.sendMessage(&can_msg) == MCP2515::ERROR_OK) ? true : false;
+}
+
 
 
 bool RmdMotor::turnOn(){
@@ -255,5 +274,3 @@ bool RmdMotor::setCurrentPositionAsOrigin(){
 
 
 
-bool RmdMotor::setCurrent(float current_setpoint, unsigned long timeout_us) { return true;}
-bool RmdMotor::readMotorResponse(unsigned long timeout_us){return true;}

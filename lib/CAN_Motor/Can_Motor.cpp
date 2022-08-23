@@ -46,6 +46,7 @@ bool CanMotor::initialize(const CAN_SPEED can_speed, CAN_CLOCK can_clock)
 
 bool CanMotor::m_sendAndReceiveBlocking(const can_frame & can_msg , unsigned long timeout_us)
 {
+    m_emptyMCP2515buffer();
     MCP2515::ERROR response_code;
     unsigned long t_ini = micros();
     while ( (response_code = m_mcp2515.sendMessage(&can_msg)) != MCP2515::ERROR_OK and (micros()-t_ini) < timeout_us)
@@ -74,4 +75,13 @@ bool CanMotor::m_sendAndReceiveBlocking(const can_frame & can_msg , unsigned lon
         //Serial.print("Success time: "); Serial.println(i+1);
     }
     return true;    
+}
+
+
+
+void CanMotor::m_emptyMCP2515buffer()
+{
+    can_frame devnull;
+    while(m_mcp2515.readMessage(&devnull) == MCP2515::ERROR_OK){ /*Serial.println("Vaciando buffer..."); */}
+    return;
 }
