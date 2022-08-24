@@ -24,8 +24,8 @@ class RmdMotor : public CanMotor{
         bool turnOn() override;
         bool turnOff() override;
         bool setCurrentPositionAsZero() override;
-        bool setTorque(float current_setpoint) override;
-        bool setCurrent(float current_setpoint, unsigned long timeout_us) override;
+        bool setTorque(float torque_setpoint) override;
+        bool setTorque(float torque_setpoint, unsigned long timeout_us) override;
         bool readMotorResponse() override;
         bool readMotorResponse(unsigned long timeout_us) override;
         bool setCurrentPositionAsOrigin() override;

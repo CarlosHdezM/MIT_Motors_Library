@@ -15,8 +15,8 @@ class CanMotor{
         virtual bool turnOn() = 0;
         virtual bool turnOff()= 0;
         virtual bool setCurrentPositionAsZero() = 0;
-        virtual bool setTorque(float current_setpoint) = 0;
-        virtual bool setCurrent(float current_setpoint, unsigned long timeout_us) = 0;
+        virtual bool setTorque(float torque_setpoint) = 0;
+        virtual bool setTorque(float torque_setpoint, unsigned long timeout_us) = 0;
         virtual bool readMotorResponse() = 0;
         virtual bool readMotorResponse(unsigned long timeout_us) = 0;
         //Public "getters" to motor response variables. 

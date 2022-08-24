@@ -75,10 +75,10 @@ bool MitMotor::setCurrentPositionAsZero()
 }
 
 
-bool MitMotor::setCurrent(float current_setpoint, unsigned long timeout_us){
+bool MitMotor::setTorque(float torque_setpoint, unsigned long timeout_us){
     bool was_message_sent;
     unsigned long t_ini = micros();
-    while(!(was_message_sent = setTorque(current_setpoint)) and (micros()-t_ini) < timeout_us)
+    while(!(was_message_sent = setTorque(torque_setpoint)) and (micros()-t_ini) < timeout_us)
     {
         //Serial.println("Send Retry!");           
     }
@@ -87,11 +87,11 @@ bool MitMotor::setCurrent(float current_setpoint, unsigned long timeout_us){
 
 
 
-bool MitMotor::setTorque(float current_setpoint ){
+bool MitMotor::setTorque(float torque_setpoint ){
     can_frame can_msg;
 
     /// limit data to be within bounds ///
-    float t_ff = constrain(current_setpoint, m_motor_type.T_MIN, m_motor_type.T_MAX);
+    float t_ff = constrain(torque_setpoint, m_motor_type.T_MIN, m_motor_type.T_MAX);
     unsigned int t_int  = m_float_to_uint(t_ff, m_motor_type.T_MIN, m_motor_type.T_MAX);
 
     can_msg.can_id  = 0x01;

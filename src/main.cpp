@@ -13,7 +13,7 @@
     RmdMotor motor1(RmdMotor::RMD_X6, CS_1, "RMD_X6");
 
 #else
-    MitMotor motor1(MitMotor::GIM, CS_1, "AK10 1");
+    MitMotor motor1(MitMotor::GIM, CS_1, "GIM 1");
 
 #endif
 
@@ -82,7 +82,7 @@ void loop() {
 
         case '6':
             while(digitalRead(PIN_BOTON)){
-                if(!motor1.setCurrent(0,1000)) Serial.println("Message NOT Sent");
+                if(!motor1.setTorque(0,1000)) Serial.println("Message NOT Sent");
                 if(motor1.readMotorResponse(2000)){
                     Serial.print("Position: "); Serial.print(motor1.position(), 4);
                     Serial.print("\tTorque: "); Serial.print(motor1.torque(), 4);
