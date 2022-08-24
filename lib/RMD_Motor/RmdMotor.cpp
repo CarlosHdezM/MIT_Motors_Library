@@ -12,6 +12,8 @@
 #define X6_KT                 0.88f
 #define X8_PRO_KT             2.6f
 #define X8_KT                 2.09f
+#define CURRENT_RAW_MIN      -2000
+#define CURRENT_RAW_MAX       2000
 //Conversion Constants
 #define AMPS_TO_RAW           62.5f           //Constant to convert from Amperes to RAW (in the motor manufacturer range).
 #define RAD                   0.01745329251   //(pi/180)grad to rad 
@@ -94,6 +96,7 @@ bool RmdMotor::setCurrent(float current_setpoint)
     can_frame can_msg;
     torque_msg_tx msg_tx;
     msg_tx.values.torque = (int16_t)(((current_setpoint)/m_motor_type.KT)*AMPS_TO_RAW);
+    msg_tx.values.torque = constrain(msg_tx.values.torque, CURRENT_RAW_MIN, CURRENT_RAW_MAX);
     can_msg.can_id  = 0x141;
     can_msg.can_dlc = 0x08;
     can_msg.data[0] = SET_TORQUE_COMMAND;
