@@ -3,18 +3,16 @@
 #include "MitMotor.h"
 #include "RmdMotor.h"
  
-
 #define CS_1 5
 #define PIN_BOTON 26
 
-#define MOTOR_RMD 0
+#define MOTOR_RMD 1
 
 #if MOTOR_RMD
-    RmdMotor motor1(RmdMotor::RMD_X6, CS_1, "RMD_X6");
+    RmdMotor motor1(RmdMotor::RMD_L5015, CS_1, "RMD_L5015");
 
 #else
     MitMotor motor1(MitMotor::GIM, CS_1, "GIM 1");
-
 #endif
 
 
@@ -76,7 +74,7 @@ void loop() {
             break;
 
         case '5':
-            if (motor1.setTorque(50)) Serial.println("Current 50 setpoint sent");
+            if (motor1.setTorque(.5)) Serial.println("Current 50 setpoint sent");
             else Serial.println("Failed sending the message");
             break;
 

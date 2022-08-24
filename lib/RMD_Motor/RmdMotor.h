@@ -15,6 +15,7 @@ class RmdMotor : public CanMotor{
         };
         static const MotorType RMD_X6;
         static const MotorType RMD_X8;
+        static const MotorType RMD_L5015;
 
         //Public member functions exlusive for RMD motors
         bool requestPosition();

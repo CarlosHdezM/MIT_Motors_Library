@@ -7,8 +7,10 @@
 #define TURN_OFF_COMMAND      0X80
 #define UPDATE_STATUS_COMMAND 0x9C
 //Motors Parameters
+#define REDUCTION_1_TO_1      1.0f
 #define REDUCTION_6_TO_1      6.0f
 #define REDUCTION_9_TO_1      9.0f
+#define L5015_KT              0.08f
 #define X6_KT                 0.88f
 #define X8_PRO_KT             2.6f
 #define X8_KT                 2.09f
@@ -22,6 +24,7 @@
 //Definition of static constants. 
 const RmdMotor::MotorType RmdMotor::RMD_X6{REDUCTION_6_TO_1, X6_KT};
 const RmdMotor::MotorType RmdMotor::RMD_X8{REDUCTION_6_TO_1, X8_KT};
+const RmdMotor::MotorType RmdMotor::RMD_L5015{REDUCTION_1_TO_1, L5015_KT};
 
 
 union torque_msg_tx
@@ -228,6 +231,9 @@ bool RmdMotor::turnOff()
     can_msg.data[5] = 0x00;
     can_msg.data[6] = 0x00;
     can_msg.data[7] = 0x00;
+    if (!m_sendAndReceiveBlocking(can_msg, 1000000)) return false;
+
+    can_msg.data[0] = REQUEST_POS_COMMAND;
     return m_sendAndReceiveBlocking(can_msg, 1000000);
 }
 
@@ -246,6 +252,8 @@ bool RmdMotor::setCurrentPositionAsZero()
     can_msg.data[5] = 0x00;
     can_msg.data[6] = 0x00;
     can_msg.data[7] = 0x00;
+    if (!m_sendAndReceiveBlocking(can_msg, 1000000)) return false;
+    can_msg.data[0] = REQUEST_POS_COMMAND;
     if (!m_sendAndReceiveBlocking(can_msg, 1000000)) return false;
     m_offset_from_zero_motor = m_position;
     return true;
