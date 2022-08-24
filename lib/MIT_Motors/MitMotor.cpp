@@ -78,7 +78,7 @@ bool MitMotor::setCurrentPositionAsZero()
 bool MitMotor::setCurrent(float current_setpoint, unsigned long timeout_us){
     bool was_message_sent;
     unsigned long t_ini = micros();
-    while(!(was_message_sent = setCurrent(current_setpoint)) and (micros()-t_ini) < timeout_us)
+    while(!(was_message_sent = setTorque(current_setpoint)) and (micros()-t_ini) < timeout_us)
     {
         //Serial.println("Send Retry!");           
     }
@@ -87,7 +87,7 @@ bool MitMotor::setCurrent(float current_setpoint, unsigned long timeout_us){
 
 
 
-bool MitMotor::setCurrent(float current_setpoint ){
+bool MitMotor::setTorque(float current_setpoint ){
     can_frame can_msg;
 
     /// limit data to be within bounds ///

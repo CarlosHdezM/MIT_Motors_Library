@@ -55,7 +55,7 @@ void loop() {
             break;
 
         case '2':
-            if (motor1.setCurrent(0)) Serial.println("Current 0 setpoint sent");
+            if (motor1.setTorque(0)) Serial.println("Current 0 setpoint sent");
             else Serial.println("Failed sending the message");
             break;
 
@@ -76,7 +76,7 @@ void loop() {
             break;
 
         case '5':
-            if (motor1.setCurrent(50)) Serial.println("Current 50 setpoint sent");
+            if (motor1.setTorque(50)) Serial.println("Current 50 setpoint sent");
             else Serial.println("Failed sending the message");
             break;
 

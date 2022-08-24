@@ -83,7 +83,7 @@ RmdMotor::RmdMotor(const MotorType & motor_type, const uint8_t _CS,const char * 
 bool RmdMotor::setCurrent(float current_setpoint, unsigned long timeout_us){
     bool was_message_sent;
     unsigned long t_ini = micros();
-    while(!(was_message_sent = setCurrent(current_setpoint)) and (micros()-t_ini) < timeout_us)
+    while(!(was_message_sent = setTorque(current_setpoint)) and (micros()-t_ini) < timeout_us)
     {
         //Serial.println("Send Retry!");           
     }
@@ -91,7 +91,7 @@ bool RmdMotor::setCurrent(float current_setpoint, unsigned long timeout_us){
 }
 
 
-bool RmdMotor::setCurrent(float current_setpoint)
+bool RmdMotor::setTorque(float current_setpoint)
 {
     can_frame can_msg;
     torque_msg_tx msg_tx;
