@@ -6,7 +6,7 @@
 
 //Definition of static constants. 
 const MitMotor::MotorType MitMotor::AK_10{-18.0f, 18.0f, 1.0f};
-const MitMotor::MotorType MitMotor::GIM{-4.0f, 4.0f, -4.0f};
+const MitMotor::MotorType MitMotor::GIM{-4.0f, 4.0f, -2.0f};
 const float MitMotor::MotorType::P_MIN = -12.5f;
 const float MitMotor::MotorType::P_MAX =  12.5f;
 const float MitMotor::MotorType::V_MIN = -65.0f;

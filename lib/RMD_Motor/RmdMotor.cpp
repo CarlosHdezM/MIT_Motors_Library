@@ -7,14 +7,18 @@
 #define TURN_OFF_COMMAND      0X80
 #define UPDATE_STATUS_COMMAND 0x9C
 //Motors Parameters
-#define REDUCTION_1_TO_1      1.0f
-#define REDUCTION_6_TO_1      6.0f
-#define REDUCTION_9_TO_1      9.0f
+#define REDUCTION_1_TO_1      1.00f
+#define REDUCTION_6_TO_1      6.00f
+#define REDUCTION_9_TO_1      9.00f
 #define L5015_KT              0.08f
 #define X6_KT                 0.88f
-#define X8_PRO_KT             2.6f
-#define X8_KT                 2.09f
-#define CURRENT_RAW_MIN      -2000
+#define X8_PRO_V1_KT          3.30f
+#define X8_V1_KT              3.00f
+#define X8_PRO_V2_KT          2.60f
+#define X8_V2_KT              2.09f
+#define X8_PRO_V3_KT          0.29f
+#define X8_V3_KT              0.30f
+#define CURRENT_RAW_MIN       -2000
 #define CURRENT_RAW_MAX       2000
 //Conversion Constants
 #define AMPS_TO_RAW           62.5f           //Constant to convert from Amperes to RAW (in the motor manufacturer range).
@@ -23,7 +27,12 @@
 
 //Definition of static constants. 
 const RmdMotor::MotorType RmdMotor::RMD_X6{REDUCTION_6_TO_1, X6_KT};
-const RmdMotor::MotorType RmdMotor::RMD_X8{REDUCTION_6_TO_1, X8_KT};
+const RmdMotor::MotorType RmdMotor::RMD_X8_V1{REDUCTION_6_TO_1, X8_V1_KT};
+const RmdMotor::MotorType RmdMotor::RMD_X8_PRO_V1{REDUCTION_6_TO_1, X8_PRO_V1_KT};
+const RmdMotor::MotorType RmdMotor::RMD_X8_V2{REDUCTION_9_TO_1, X8_V2_KT};
+const RmdMotor::MotorType RmdMotor::RMD_X8_PRO_V2{REDUCTION_9_TO_1, X8_PRO_V2_KT};
+const RmdMotor::MotorType RmdMotor::RMD_X8_V3{REDUCTION_6_TO_1, X8_V3_KT};
+const RmdMotor::MotorType RmdMotor::RMD_X8_PRO_V3{REDUCTION_6_TO_1, X8_PRO_V3_KT};
 const RmdMotor::MotorType RmdMotor::RMD_L5015{REDUCTION_1_TO_1, L5015_KT};
 
 
@@ -155,7 +164,7 @@ bool RmdMotor::readMotorResponse()
             break;
 
         case REQUEST_POS_COMMAND:
-            m_position = (((((response_msg.data[4] << 24) | (response_msg.data[3] << 16) | (response_msg.data[2] << 8) | (response_msg.data[1])))/(m_motor_type.reduction * 100.0))* RAD);
+            m_position = (((((response_msg.data[4] << 24) | (response_msg.data[3] << 16) | (response_msg.data[2] << 8) | (response_msg.data[1])))/(m_motor_type.reduction * 100.0))/** RAD*/);
             break;
             
         case SET_ZERO_POS_COMMAND:
