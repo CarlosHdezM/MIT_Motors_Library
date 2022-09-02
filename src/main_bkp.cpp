@@ -1,38 +1,31 @@
-#include "Arduino.h"
+/*#include "Arduino.h"
 #include "machine_state.h"
 #include "MitMotor.h"
 #include "RmdMotor.h"
  
 #define CS_1 2
-#define INT_1 27
-
 #define BOTON 1
 #define MOTOR_RMD 0
 #if MOTOR_RMD
     RmdMotor motor1(RmdMotor::RMD_L5015, CS_1, "RMD_L5015");
 
 #else
-    MitMotor motor1(MitMotor::AK_10, CS_1, INT_1, "AK_10 1");
+    MitMotor motor1(MitMotor::AK_10, CS_1, "AK_10 1");
 #endif
 
 MachineStates current_state = MachineStates::PRINT_MENU;
-
 
 void setup()
 {
     Serial.begin(115200);
 
-    pinMode(BOTON, INPUT_PULLUP);
-    pinMode(INT_1, INPUT);
+    pinMode(BOTON, INPUT_PULLUP);   
 
     while(!motor1.initialize()){
         Serial.print("Retrying to connect to the MCP2515 of motor "); Serial.println(motor1.name());
         delay(100);
     }
-
     Serial.println("Initialized succesfully");
-
-    motor1.startInterrupt([](){motor1.handleInterrupt();});
 }
 
 void loop ()
@@ -214,3 +207,7 @@ void loop ()
     }
 
 }
+
+
+
+*/

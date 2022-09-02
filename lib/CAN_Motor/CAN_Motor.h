@@ -10,7 +10,14 @@
 class CanMotor{
     public:
         CanMotor(const uint8_t _CS, const char * motor_name = "DEFAULT_NAME", SPIClass & spi = SPI, const bool doBegin = true);
+        CanMotor(const uint8_t _CS, const uint8_t _INT_PIN, const char * motor_name = "DEFAULT_NAME", SPIClass & spi = SPI, const bool doBegin = true);
+
         bool initialize(const CAN_SPEED can_speed = CAN_1000KBPS, CAN_CLOCK can_clock = MCP_16MHZ);
+        
+        void handleInterrupt(void);
+        void startInterrupt(void (*ISR_callback)(void));
+        void (*ISR_callback)();
+        
         virtual bool setCurrentPositionAsOrigin() = 0;
         virtual bool turnOn() = 0;
         virtual bool turnOff()= 0;
@@ -31,6 +38,7 @@ class CanMotor{
         float m_velocity;
         float m_torque;
         const char * m_name;
+        const uint8_t m_interrupt_pin;
         can_frame response_msg;
         MCP2515 m_mcp2515;
         //Protected methods.
