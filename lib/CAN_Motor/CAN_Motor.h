@@ -9,12 +9,11 @@
 
 class CanMotor{
     public:
-        CanMotor(const uint8_t _CS, const char * motor_name = "DEFAULT_NAME", SPIClass & spi = SPI, const bool doBegin = true);
         CanMotor(const uint8_t _CS, const uint8_t _INT_PIN, const char * motor_name = "DEFAULT_NAME", SPIClass & spi = SPI, const bool doBegin = true);
 
         bool initialize(const CAN_SPEED can_speed = CAN_1000KBPS, CAN_CLOCK can_clock = MCP_16MHZ);
         
-        void handleInterrupt(void);
+        virtual void handleInterrupt(void) = 0;
         void startInterrupt(void (*ISR_callback)(void));
         void (*ISR_callback)();
         

@@ -17,14 +17,19 @@ const float MitMotor::MotorType::KD_MIN = 0.0f;
 const float MitMotor::MotorType::KD_MAX = 5.0f;
 
 
-MitMotor::MitMotor(const MotorType & motor_type, const uint8_t _CS,const char * motor_name, SPIClass & spi, const bool doBegin)
-    : CanMotor{_CS, motor_name, spi, doBegin}, m_motor_type(motor_type) 
+
+MitMotor::MitMotor(const MotorType & motor_type, const uint8_t _CS, const uint8_t _INT_PIN, const char * motor_name, SPIClass & spi, const bool doBegin)
+    : m_motor_type(motor_type), CanMotor{_CS, _INT_PIN, motor_name, spi, doBegin}
 {
 }
 
-MitMotor::MitMotor(const MotorType & motor_type, const uint8_t _CS, const uint8_t _INT_PIN, const char * motor_name, SPIClass & spi, const bool doBegin)
-    : CanMotor{_CS, _INT_PIN, motor_name, spi, doBegin}, m_motor_type(motor_type) 
+
+void MitMotor::handleInterrupt(void)
 {
+    //Serial.println("\n!!!Response from:");
+    //Serial.println(m_name); Serial.println("\n" );
+    readMotorResponse();
+    setTorque(0);
 }
 
 

@@ -1,10 +1,6 @@
 #include "CAN_Motor.h"
 
 
-CanMotor::CanMotor(const uint8_t _CS,const char * motor_name, SPIClass & spi, const bool doBegin)
-    : m_interrupt_pin(99), m_name(motor_name), m_mcp2515{_CS, spi, doBegin}, m_torque(0), m_position(0), m_velocity(0), m_offset_from_zero_motor(0)
-{
-}
 
 
 CanMotor::CanMotor(const uint8_t _CS, const uint8_t _INT_PIN, const char * motor_name, SPIClass & spi, const bool doBegin)
@@ -45,32 +41,7 @@ bool CanMotor::initialize(const CAN_SPEED can_speed, CAN_CLOCK can_clock)
 }
 
 
-/*
-void CanMotor::irqHandler() 
-{
-    Serial.println("\nINTERRUPT RECEIVED\n");
-    //readMotorResponse();
-}
-*/
 
-
-/*
-void CanMotor::startInterrupt(void (*ISR_callback)(void)){
-    attachInterrupt(m_interrupt_pin, [](){
-        Serial.println("\nINTERRUPT RECEIVED IN CLASS\n");
-        //Serial.println(this->m_position);
-    }
-    , FALLING);  
-}
-*/
-
-void CanMotor::handleInterrupt(void)
-{
-    Serial.println("\n\n!!!Received Interruptuc!!!\n\n");
-    //Serial.print("My name is: "); Serial.println(m_name);
-    readMotorResponse();
-    setTorque(0);
-}
 
 
 
@@ -78,11 +49,7 @@ void CanMotor::startInterrupt(void (*ISR_callback)(void)){
     attachInterrupt(m_interrupt_pin, ISR_callback, FALLING);  
 }
 
-/*
-void CanMotor::startInterrupt(){
-    attachInterrupt(m_interrupt_pin, std::bind(&CanMotor::irqHandler,this), FALLING);  
-}
-*/
+
 
 
 bool CanMotor::m_sendAndReceiveBlocking(const can_frame & can_msg , unsigned long timeout_us)

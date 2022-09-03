@@ -5,15 +5,24 @@
  
 #define CS_1 2
 #define INT_1 27
+#define CS_2 3
+#define INT_2 28
+
 
 #define BOTON 1
+#define AUX_PIN_1 9
+
+
 #define MOTOR_RMD 0
 #if MOTOR_RMD
     RmdMotor motor1(RmdMotor::RMD_L5015, CS_1, "RMD_L5015");
 
 #else
     MitMotor motor1(MitMotor::AK_10, CS_1, INT_1, "AK_10 1");
+    //MitMotor motor2(MitMotor::GIM, CS_2, INT_2, "GIM 1");
 #endif
+
+RmdMotor motor2(RmdMotor::RMD_X6, CS_2, INT_2, "RMD X6 1" );
 
 MachineStates current_state = MachineStates::PRINT_MENU;
 
@@ -24,16 +33,26 @@ void setup()
 
     pinMode(BOTON, INPUT_PULLUP);
     pinMode(INT_1, INPUT);
+    pinMode(AUX_PIN_1, OUTPUT);
+    digitalWrite(AUX_PIN_1,LOW);
 
     while(!motor1.initialize()){
         Serial.print("Retrying to connect to the MCP2515 of motor "); Serial.println(motor1.name());
         delay(100);
     }
 
-    Serial.println("Initialized succesfully");
+    while(!motor2.initialize()){
+        Serial.print("Retrying to connect to the MCP2515 of motor "); Serial.println(motor1.name());
+        delay(100);
+    }
+
+
+    Serial.println("Initializedd succesfully");
 
     motor1.startInterrupt([](){motor1.handleInterrupt();});
+    motor2.startInterrupt([](){motor2.handleInterrupt();});
 }
+
 
 void loop ()
 {
@@ -95,6 +114,10 @@ void loop ()
                     current_state = SET_POS_ZERO; 
                     break;
 
+                case INPUT_INITIALIZE:
+                    current_state = INITIALIZE;
+                    break;
+
                 default:
                     Serial.println("\nInvalid Option");
                     current_state = PRINT_MENU;
@@ -130,20 +153,23 @@ void loop ()
 
         case SET_TORQUE_ZERO:
             Serial.print("\nEstableciendo el torque a 0\n");
-            if (motor1.setTorque(0)) Serial.println("Current 0 setpoint sent");
-            else Serial.println("Failed sending the message");
+            if (motor1.setTorque(0)) Serial.println("Current 0 setpoint sent to motor 1");
+            else Serial.println("Failed sending the message to motor 1");
+            if (motor2.setTorque(0)) Serial.println("Current 0 setpoint sent to motor 2");
+            else Serial.println("Failed sending the message to motor 2");
             current_state = MachineStates::PRINT_MENU;
             break;
 
         case READ_MOTOR_RESPONSE:
-            Serial.print("\nLeyendo la respuesta del motor\n");
-            if (motor1.readMotorResponse())
-            {
-                Serial.print("Position: "); Serial.print(motor1.position(), 4);
-                Serial.print("\tTorque: "); Serial.print(motor1.torque(), 4);
-                Serial.print("\tVelocity: "); Serial.println(motor1.velocity(), 4);
-            }
-            else Serial.println("No response");
+            Serial.print("\nL Respuesta motores\n");
+            Serial.print("Position: "); Serial.print(motor1.position(), 4);
+            Serial.print("\tTorque: "); Serial.print(motor1.torque(), 4);
+            Serial.print("\tVelocity: "); Serial.println(motor1.velocity(), 4);
+
+            Serial.print("Position 2: "); Serial.print(motor2.position(), 4);
+            Serial.print("\tTorque 2: "); Serial.print(motor2.torque(), 4);
+            Serial.print("\tVelocity 2: "); Serial.println(motor2.velocity(), 4);
+
             current_state = MachineStates::PRINT_MENU;
             break;
 
@@ -165,17 +191,26 @@ void loop ()
 
         case SET_TORQUE_AND_READ:
             Serial.println("\nVamos a escribir y leer continuamente");
+            unsigned long last_loop_micros = micros();
+            long delay_needed;
             while (digitalRead(BOTON) == HIGH)
             {
-                if(!motor1.setTorque(0.3,1000)) Serial.println("Message NOT Sent");
-                if(!motor1.readMotorResponse(2000)) Serial.println("Message NOT Received");
-                {
-                    Serial.print("Position: "); Serial.print(motor1.position(), 4);
-                    Serial.print("\tTorque: "); Serial.print(motor1.torque(), 4);
-                    Serial.print("\tVelocity: "); Serial.println(motor1.velocity(), 4);
-                    Serial.println();
+                /*
+                delay_needed = 500 - (micros() - last_loop_micros);
+                if (delay_needed > 0) delayMicroseconds(delay_needed);
+                ///*    
+                Serial.print("Position: "); Serial.print(motor1.position(), 4);
+                Serial.print("\tTorque: "); Serial.print(motor1.torque(), 4);
+                Serial.print("\tVelocity: "); Serial.println(motor1.velocity(), 4);
 
-                }
+                Serial.print("Position 2: "); Serial.print(motor2.position(), 4);
+                Serial.print("\tTorque 2: "); Serial.print(motor2.torque(), 4);
+                Serial.print("\tVelocity 2: "); Serial.println(motor2.velocity(), 4);                   
+                Serial.println();
+                */
+                digitalWrite(AUX_PIN_1,!digitalRead(AUX_PIN_1));
+                last_loop_micros = micros();
+                
             }
             current_state = MachineStates::PRINT_MENU;
             break;
@@ -207,6 +242,19 @@ void loop ()
             else Serial.println("No response");
             current_state = PRINT_MENU;
         } break;
+
+        case INITIALIZE:
+            while(!motor1.initialize()){
+                Serial.print("Retrying to connect to the MCP2515 of motor "); Serial.println(motor1.name());
+                delay(100);
+            }
+
+            while(!motor2.initialize()){
+                Serial.print("Retrying to connect to the MCP2515 of motor "); Serial.println(motor1.name());
+                delay(100);
+            }
+            current_state = PRINT_MENU;
+            break;
 
         default:
             current_state = PRINT_MENU;

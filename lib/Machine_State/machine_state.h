@@ -15,7 +15,8 @@ enum MachineStates
     SET_TORQUE,
     SET_TORQUE_AND_READ,
     SET_POS_ORIGIN, 
-    SET_POS_ZERO
+    SET_POS_ZERO,
+    INITIALIZE
 };
 
 
@@ -30,7 +31,8 @@ enum MachineSerialInputs : char
     INPUT_SET_TORQUE = '6',
     INPUT_SET_TORQUE_AND_READ = '7',
     INPUT_SET_POS_ORIGIN = '8',
-    INPUT_SET_POS_ZERO  = '9'
+    INPUT_SET_POS_ZERO  = '9',
+    INPUT_INITIALIZE  = 'a'
 
 };
 

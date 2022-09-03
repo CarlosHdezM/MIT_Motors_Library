@@ -86,9 +86,27 @@ union torque_msg_rx
 };
 
 
-RmdMotor::RmdMotor(const MotorType & motor_type, const uint8_t _CS,const char * motor_name, SPIClass & spi, const bool doBegin)
-    : CanMotor{_CS, motor_name, spi, doBegin}, m_motor_type(motor_type) 
+RmdMotor::RmdMotor(const MotorType & motor_type, const uint8_t _CS, const uint8_t _INT_PIN, const char * motor_name, SPIClass & spi, const bool doBegin)
+    : m_motor_type(motor_type), CanMotor{_CS, _INT_PIN, motor_name, spi, doBegin}
 {
+}
+
+
+void RmdMotor::handleInterrupt(void)
+{
+    readMotorResponse();
+    if (m_curr_state == 0)
+    {
+        //Serial.println("Sending torque");
+        setTorque(0);
+        m_curr_state = 1;
+    }
+    else
+    {
+        //Serial.println("Requesting position");
+        requestPosition();
+        m_curr_state = 0;
+    }
 }
 
 

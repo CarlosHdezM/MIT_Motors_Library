@@ -27,8 +27,8 @@ class MitMotor : public CanMotor{
         static const MotorType GIM;
 
         //Public member functions common for all CAN motors:
-        MitMotor(const MotorType & motor_type, const uint8_t _CS, const char * motor_name = "DEFAULT_NAME", SPIClass & spi = SPI, const bool doBegin = true);
         MitMotor(const MotorType & motor_type, const uint8_t _CS, const uint8_t _INT_PIN, const char * motor_name = "DEFAULT_NAME", SPIClass & spi = SPI, const bool doBegin = true);
+        void handleInterrupt(void);
         bool turnOn() override;
         bool turnOff() override;
         bool setCurrentPositionAsZero() override;

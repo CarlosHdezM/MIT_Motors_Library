@@ -26,7 +26,8 @@ class RmdMotor : public CanMotor{
         bool requestPosition();
 
         //Public member functions shared by all CAN motor types. 
-        RmdMotor(const MotorType & motor_type, const uint8_t _CS, const char * motor_name = "DEFAULT_RMD", SPIClass & spi = SPI, const bool doBegin = true);
+        RmdMotor(const MotorType & motor_type, const uint8_t _CS, const uint8_t _INT_PIN, const char * motor_name = "DEFAULT_RMD", SPIClass & spi = SPI, const bool doBegin = true);
+        void handleInterrupt(void);
         bool turnOn() override;
         bool turnOff() override;
         bool setCurrentPositionAsZero() override;
@@ -41,6 +42,7 @@ class RmdMotor : public CanMotor{
         //Private member variables
         const MotorType m_motor_type;
         uint8_t m_temperature;
+        volatile bool m_curr_state = 0;
 
 
 

@@ -12,5 +12,6 @@ void print_menu()
     Serial.print(INPUT_SET_TORQUE_AND_READ - '0'); Serial.print(") Enviar y leer continuamente \n");
     Serial.print(INPUT_SET_POS_ORIGIN - '0'); Serial.print(") Establecer position actual como Origen\n");
     Serial.print(INPUT_SET_POS_ZERO - '0'); Serial.print(") Establecer position actual como Zero \n");
+    Serial.print((byte)(INPUT_INITIALIZE)); Serial.print(") Inicializar (resetear e INICIALIZAR MCP DE LOS MOTORES) \n");
 
 }
