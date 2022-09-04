@@ -32,10 +32,8 @@ class MitMotor : public CanMotor{
         bool turnOn() override;
         bool turnOff() override;
         bool setCurrentPositionAsZero() override;
-        bool setTorque(float torque_setpoint) override;
-        bool setTorque(float torque_setpoint, unsigned long timeout_us) override;
-        bool readMotorResponse() override;
-        bool readMotorResponse(unsigned long timeout_us) override;
+        //bool readMotorResponse() override;
+        //bool readMotorResponse(unsigned long timeout_us) override;
         bool setCurrentPositionAsOrigin() override;
 
         //Public member functions exclusive for MIT Motors.
@@ -48,5 +46,7 @@ class MitMotor : public CanMotor{
         //Private member functions
         unsigned int m_float_to_uint(float x, float x_min, float x_max);
         float m_uint_to_float(unsigned int x_int, float x_min, float x_max, int bits);
+        bool m_sendTorque(float torque_setpoint);
+        bool m_readMotorResponse() override;
 
 };

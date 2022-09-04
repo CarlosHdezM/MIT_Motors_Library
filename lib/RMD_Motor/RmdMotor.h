@@ -31,18 +31,19 @@ class RmdMotor : public CanMotor{
         bool turnOn() override;
         bool turnOff() override;
         bool setCurrentPositionAsZero() override;
-        bool setTorque(float torque_setpoint) override;
-        bool setTorque(float torque_setpoint, unsigned long timeout_us) override;
-        bool readMotorResponse() override;
-        bool readMotorResponse(unsigned long timeout_us) override;
         bool setCurrentPositionAsOrigin() override;
-
 
     private:
         //Private member variables
         const MotorType m_motor_type;
         uint8_t m_temperature;
         volatile bool m_curr_state = 0;
+
+        bool m_sendTorque(float torque_setpoint);
+        bool m_requestPosition();
+        bool m_readMotorResponse() override;
+
+
 
 
 

@@ -32,7 +32,6 @@ void setup()
     Serial.begin(115200);
 
     pinMode(BOTON, INPUT_PULLUP);
-    pinMode(INT_1, INPUT);
     pinMode(AUX_PIN_1, OUTPUT);
     digitalWrite(AUX_PIN_1,LOW);
 
@@ -49,8 +48,7 @@ void setup()
 
     Serial.println("Initializedd succesfully");
 
-    motor1.startInterrupt([](){motor1.handleInterrupt();});
-    motor2.startInterrupt([](){motor2.handleInterrupt();});
+
 }
 
 
@@ -114,8 +112,12 @@ void loop ()
                     current_state = SET_POS_ZERO; 
                     break;
 
-                case INPUT_INITIALIZE:
-                    current_state = INITIALIZE;
+                case INPUT_AUTO_MODE_ON:
+                    current_state = START_AUTO_MODE;
+                    break;
+
+                case INPUT_AUTO_MODE_OFF:
+                    current_state = STOP_AUTO_MODE;
                     break;
 
                 default:
@@ -161,6 +163,8 @@ void loop ()
             break;
 
         case READ_MOTOR_RESPONSE:
+            motor1.readMotorResponse();
+            motor2.readMotorResponse();
             Serial.print("\nL Respuesta motores\n");
             Serial.print("Position: "); Serial.print(motor1.position(), 4);
             Serial.print("\tTorque: "); Serial.print(motor1.torque(), 4);
@@ -190,30 +194,36 @@ void loop ()
             break;
 
         case SET_TORQUE_AND_READ:
+        {
             Serial.println("\nVamos a escribir y leer continuamente");
-            unsigned long last_loop_micros = micros();
-            long delay_needed;
+            elapsedMicros wait;
+            const uint16_t delay_us = 250;
             while (digitalRead(BOTON) == HIGH)
             {
-                /*
-                delay_needed = 500 - (micros() - last_loop_micros);
-                if (delay_needed > 0) delayMicroseconds(delay_needed);
-                ///*    
-                Serial.print("Position: "); Serial.print(motor1.position(), 4);
-                Serial.print("\tTorque: "); Serial.print(motor1.torque(), 4);
-                Serial.print("\tVelocity: "); Serial.println(motor1.velocity(), 4);
 
-                Serial.print("Position 2: "); Serial.print(motor2.position(), 4);
-                Serial.print("\tTorque 2: "); Serial.print(motor2.torque(), 4);
-                Serial.print("\tVelocity 2: "); Serial.println(motor2.velocity(), 4);                   
-                Serial.println();
-                */
-                digitalWrite(AUX_PIN_1,!digitalRead(AUX_PIN_1));
-                last_loop_micros = micros();
+                //while(wait < delay_us){}
+                //wait = 0;
+
+                motor2.setTorque(0,2000);
+                motor1.setTorque(0,2000);
+                motor2.readMotorResponse(1000);
+                motor2.requestPosition();
+                motor1.readMotorResponse(2000);
+                motor2.readMotorResponse(2000);
+
+                // Serial.print("Position: "); Serial.print(motor1.position(), 4);
+                // Serial.print("\tTorque: "); Serial.print(motor1.torque(), 4);
+                // Serial.print("\tVelocity: "); Serial.println(motor1.velocity(), 4);
+
+                // Serial.print("Position 2: "); Serial.print(motor2.position(), 4);
+                // Serial.print("\tTorque 2: "); Serial.print(motor2.torque(), 4);
+                // Serial.print("\tVelocity 2: "); Serial.println(motor2.velocity(), 4);                   
+                // Serial.println();
                 
+                digitalWrite(AUX_PIN_1,!digitalRead(AUX_PIN_1));
             }
             current_state = MachineStates::PRINT_MENU;
-            break;
+        }break;
 
         case SET_POS_ORIGIN:
             Serial.print("\nSe ha establecido la posicion actual como el origen\n");
@@ -243,16 +253,15 @@ void loop ()
             current_state = PRINT_MENU;
         } break;
 
-        case INITIALIZE:
-            while(!motor1.initialize()){
-                Serial.print("Retrying to connect to the MCP2515 of motor "); Serial.println(motor1.name());
-                delay(100);
-            }
+        case START_AUTO_MODE:
+            motor1.startAutoMode([](){motor1.handleInterrupt();});
+            motor2.startAutoMode([](){motor2.handleInterrupt();});                        
+            current_state = PRINT_MENU;
+            break;
 
-            while(!motor2.initialize()){
-                Serial.print("Retrying to connect to the MCP2515 of motor "); Serial.println(motor1.name());
-                delay(100);
-            }
+        case STOP_AUTO_MODE:
+            motor1.stopAutoMode();
+            motor2.stopAutoMode();                        
             current_state = PRINT_MENU;
             break;
 

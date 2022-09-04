@@ -16,7 +16,8 @@ enum MachineStates
     SET_TORQUE_AND_READ,
     SET_POS_ORIGIN, 
     SET_POS_ZERO,
-    INITIALIZE
+    START_AUTO_MODE,
+    STOP_AUTO_MODE
 };
 
 
@@ -32,8 +33,8 @@ enum MachineSerialInputs : char
     INPUT_SET_TORQUE_AND_READ = '7',
     INPUT_SET_POS_ORIGIN = '8',
     INPUT_SET_POS_ZERO  = '9',
-    INPUT_INITIALIZE  = 'a'
-
+    INPUT_AUTO_MODE_ON  = 'a', 
+    INPUT_AUTO_MODE_OFF = 'b'
 };
 
 void print_menu(void);

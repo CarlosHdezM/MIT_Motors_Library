@@ -26,10 +26,25 @@ MitMotor::MitMotor(const MotorType & motor_type, const uint8_t _CS, const uint8_
 
 void MitMotor::handleInterrupt(void)
 {
-    //Serial.println("\n!!!Response from:");
-    //Serial.println(m_name); Serial.println("\n" );
-    readMotorResponse();
-    setTorque(0);
+    uint8_t irq = m_mcp2515.getInterrupts();
+    //Serial.println(irq,BIN);
+    if (irq & MCP2515::CANINTF_MERRF)
+    {
+        Serial.println("\n\n!!!!!ERROR MERF (ERROR IN MESSAGE TRANSMISSION OR RECEPTION)!!!\n\n");
+        m_mcp2515.clearMERR();
+        m_mcp2515.clearInterrupts();
+    }
+    if (irq & MCP2515::CANINTF_ERRIF)
+    {
+        //uint8_t err = m_mcp2515.getErrorFlags();
+        Serial.println("\n\n!!!!!!!ERROR BUFFER FULL!!!!!!\n\n");
+        //m_emptyMCP2515buffer();
+        m_mcp2515.clearRXnOVRFlags();
+        m_mcp2515.clearERRIF();
+        m_mcp2515.clearInterrupts();
+    }
+    m_readMotorResponse();
+    m_sendTorque(m_torque_setpoint);
 }
 
 
@@ -85,19 +100,13 @@ bool MitMotor::setCurrentPositionAsZero()
 }
 
 
-bool MitMotor::setTorque(float torque_setpoint, unsigned long timeout_us){
-    bool was_message_sent;
-    unsigned long t_ini = micros();
-    while(!(was_message_sent = setTorque(torque_setpoint)) and (micros()-t_ini) < timeout_us)
-    {
-        //Serial.println("Send Retry!");           
-    }
-    return was_message_sent;
-}
 
 
+//HERE
 
-bool MitMotor::setTorque(float torque_setpoint ){
+
+bool MitMotor::m_sendTorque(float torque_setpoint)
+{
     can_frame can_msg;
 
     /// limit data to be within bounds ///
@@ -114,26 +123,13 @@ bool MitMotor::setTorque(float torque_setpoint ){
     can_msg.data[5] = 0x0;
     can_msg.data[6] = t_int >> 8;
     can_msg.data[7] = t_int & 0xFF;
+    m_mcp2515.clearInterrupts();
     return m_mcp2515.sendMessage(&can_msg) == MCP2515::ERROR_OK ? true : false;
 }
 
 
 
-bool MitMotor::readMotorResponse(unsigned long timeout_us)
-{
-    bool was_response_received;
-    unsigned long t_ini = micros();
-    while(!(was_response_received = readMotorResponse()) and (micros()-t_ini) < timeout_us)
-    {
-        //Serial.println("Waiting for response!");           
-    }
-    return was_response_received;
-}
-
-
-
-bool MitMotor::readMotorResponse()
-{
+bool MitMotor::m_readMotorResponse(){
     MCP2515::ERROR response_code = m_mcp2515.readMessage(&response_msg);
     if(response_code != MCP2515::ERROR::ERROR_OK)
     {
@@ -149,7 +145,6 @@ bool MitMotor::readMotorResponse()
     m_torque = m_uint_to_float(t_int_rx, m_motor_type.T_MIN,  m_motor_type.T_MAX, 12);
     return true;
 }
-
 
 
 bool MitMotor::setCurrentPositionAsOrigin(){

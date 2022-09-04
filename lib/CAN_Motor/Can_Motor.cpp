@@ -44,11 +44,65 @@ bool CanMotor::initialize(const CAN_SPEED can_speed, CAN_CLOCK can_clock)
 
 
 
-
-void CanMotor::startInterrupt(void (*ISR_callback)(void)){
-    attachInterrupt(m_interrupt_pin, ISR_callback, FALLING);  
+void CanMotor::startAutoMode(void (*ISR_callback)(void)){
+    m_is_auto_mode_running = true;
+    m_emptyMCP2515buffer();
+    m_mcp2515.clearInterrupts();
+    pinMode(m_interrupt_pin, INPUT);
+    attachInterrupt(digitalPinToInterrupt(m_interrupt_pin), ISR_callback, FALLING);
+    m_sendTorque(m_torque_setpoint); 
+    return;
 }
 
+
+void CanMotor::stopAutoMode()
+{
+    m_is_auto_mode_running = false;
+    detachInterrupt(digitalPinToInterrupt(m_interrupt_pin));
+    m_emptyMCP2515buffer();
+    m_mcp2515.clearInterrupts();
+    return;
+}
+
+
+
+bool CanMotor::setTorque(float torque_setpoint, unsigned long timeout_us){
+    bool was_message_sent;
+    unsigned long t_ini = micros();
+    while(!(was_message_sent = setTorque(torque_setpoint)) and (micros()-t_ini) < timeout_us)
+    {
+        //Serial.println("Send Retry!");           
+    }
+    return was_message_sent;
+}
+
+
+
+bool CanMotor::setTorque(float torque_setpoint )
+{
+    m_torque_setpoint = torque_setpoint;
+    return (m_is_auto_mode_running ? true : m_sendTorque(m_torque_setpoint));
+}
+
+
+
+bool CanMotor::readMotorResponse(unsigned long timeout_us)
+{
+    bool was_response_received;
+    unsigned long t_ini = micros();
+    while(!(was_response_received = readMotorResponse()) and (micros()-t_ini) < timeout_us)
+    {
+        //Serial.println("Waiting for response!");           
+    }
+    return was_response_received;
+}
+
+
+
+bool CanMotor::readMotorResponse()
+{
+    return (m_is_auto_mode_running ? true : m_readMotorResponse());
+}
 
 
 

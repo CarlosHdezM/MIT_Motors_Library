@@ -94,34 +94,42 @@ RmdMotor::RmdMotor(const MotorType & motor_type, const uint8_t _CS, const uint8_
 
 void RmdMotor::handleInterrupt(void)
 {
-    readMotorResponse();
+    uint8_t irq = m_mcp2515.getInterrupts();
+    //Serial.println(irq,BIN);
+    if (irq & MCP2515::CANINTF_MERRF)
+    {
+        Serial.println("\n\n!!!!!ERROR MERF (ERROR IN MESSAGE TRANSMISSION OR RECEPTION)!!!\n\n");
+        m_mcp2515.clearMERR();
+        m_mcp2515.clearInterrupts();
+    }
+    if (irq & MCP2515::CANINTF_ERRIF)
+    {
+        //uint8_t err = m_mcp2515.getErrorFlags();
+        Serial.println("\n\n!!!!!!!ERROR BUFFER FULL!!!!!!\n\n");
+        //m_emptyMCP2515buffer();
+        m_mcp2515.clearRXnOVRFlags();
+        m_mcp2515.clearERRIF();
+        m_mcp2515.clearInterrupts();
+    }
+
+    m_readMotorResponse();
     if (m_curr_state == 0)
     {
         //Serial.println("Sending torque");
-        setTorque(0);
+        m_sendTorque(m_torque_setpoint);
         m_curr_state = 1;
     }
     else
     {
         //Serial.println("Requesting position");
-        requestPosition();
+        m_requestPosition();
         m_curr_state = 0;
     }
 }
 
 
-bool RmdMotor::setTorque(float torque_setpoint, unsigned long timeout_us){
-    bool was_message_sent;
-    unsigned long t_ini = micros();
-    while(!(was_message_sent = setTorque(torque_setpoint)) and (micros()-t_ini) < timeout_us)
-    {
-        //Serial.println("Send Retry!");           
-    }
-    return was_message_sent;
-}
 
-
-bool RmdMotor::setTorque(float torque_setpoint)
+bool RmdMotor::m_sendTorque(float torque_setpoint)
 {
     can_frame can_msg;
     torque_msg_tx msg_tx;
@@ -137,27 +145,15 @@ bool RmdMotor::setTorque(float torque_setpoint)
     can_msg.data[5] = msg_tx.bytes.b5;
     can_msg.data[6] = msg_tx.bytes.b6;
     can_msg.data[7] = msg_tx.bytes.b7;
+    m_mcp2515.clearInterrupts();
     return (m_mcp2515.sendMessage(&can_msg) == MCP2515::ERROR_OK) ? true : false;
 }
 
 
 
-bool RmdMotor::readMotorResponse(unsigned long timeout_us)
+bool RmdMotor::m_readMotorResponse()
 {
-    bool was_response_received;
-    unsigned long t_ini = micros();
-    while(!(was_response_received = readMotorResponse()) and (micros()-t_ini) < timeout_us)
-    {
-        //Serial.println("Waiting for response!");           
-    }
-    return was_response_received;
-}
-
-
-
-bool RmdMotor::readMotorResponse()
-{
-    torque_msg_rx msg_rx;  
+torque_msg_rx msg_rx;  
     if(m_mcp2515.readMessage(&response_msg) != MCP2515::ERROR::ERROR_OK)
     { 
         return false;
@@ -199,12 +195,19 @@ bool RmdMotor::readMotorResponse()
             return false;
             break;
     }
-    return true;    
+    return true;   
 }
 
 
 
 bool RmdMotor::requestPosition()
+{
+    return (m_is_auto_mode_running ? true : m_requestPosition());
+}
+
+
+
+bool RmdMotor::m_requestPosition()
 {
     can_frame can_msg;
     can_msg.can_id  = 0x141;
@@ -217,9 +220,9 @@ bool RmdMotor::requestPosition()
     can_msg.data[5] = 0x00;
     can_msg.data[6] = 0x00;
     can_msg.data[7] = 0x00;
+    m_mcp2515.clearInterrupts();
     return (m_mcp2515.sendMessage(&can_msg) == MCP2515::ERROR_OK) ? true : false;
 }
-
 
 
 bool RmdMotor::turnOn(){
