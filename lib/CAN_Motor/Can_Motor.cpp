@@ -69,6 +69,10 @@ void CanMotor::stopAutoMode()
 
 
 bool CanMotor::setTorque(float torque_setpoint, unsigned long timeout_us){
+    if (m_is_auto_mode_running) 
+    {
+        return setTorque(torque_setpoint);
+    }
     bool was_message_sent;
     unsigned long t_ini = micros();
     while(!(was_message_sent = setTorque(torque_setpoint)) and (micros()-t_ini) < timeout_us)
@@ -83,25 +87,24 @@ bool CanMotor::setTorque(float torque_setpoint, unsigned long timeout_us){
 bool CanMotor::setTorque(float torque_setpoint )
 {
     m_torque_setpoint = torque_setpoint;
-    //return (m_is_auto_mode_running ? true : m_sendTorque(m_torque_setpoint));
     if(m_is_auto_mode_running)
     {
         if ((millis() - m_last_response_time_ms) < MILLIS_LIMIT_UNTIL_RETRY) //In auto mode, test if we received response 
         {
-            Serial.println("All Ok, auto mode running normally");
+            //Serial.println("All Ok, auto mode running normally");
             return true; //Everything OK. Motor doesn't need communication "recovery"
         }
         else
         {
-            Serial.print("\t Millis: "); Serial.print(millis()); Serial.print("\tLast message"); Serial.print(m_last_response_time_ms); Serial.print("\tRetrying to recover "); Serial.println(m_name); 
-            //m_emptyMCP2515buffer();
-            m_mcp2515.clearRXnOVRFlags();
-            m_mcp2515.clearERRIF();
-            m_mcp2515.clearMERR();
-            m_mcp2515.clearInterrupts();
+            //Serial.print("\t Millis: "); Serial.print(millis()); Serial.print("\tLast message"); Serial.print(m_last_response_time_ms); Serial.print("\tRetrying to recover "); Serial.println(m_name); 
+            m_emptyMCP2515buffer();
+            // m_mcp2515.clearRXnOVRFlags();
+            // m_mcp2515.clearERRIF();
+            // m_mcp2515.clearMERR();
+            //m_mcp2515.clearInterrupts();
             m_last_response_time_ms = millis();
-            if (m_sendTorque(m_torque_setpoint)) {Serial.print("IN CLASS: Sent torque successfully to "); Serial.println(m_name); return true;}
-            else {Serial.print("IN CLASS: FAILED Sending torque to "); Serial.println(m_name); return false;}
+            m_sendTorque(m_torque_setpoint);
+            return false;
         }
     }
     return m_sendTorque(m_torque_setpoint);
@@ -111,6 +114,7 @@ bool CanMotor::setTorque(float torque_setpoint )
 
 bool CanMotor::readMotorResponse(unsigned long timeout_us)
 {
+    if (m_is_auto_mode_running) return readMotorResponse();
     bool was_response_received;
     unsigned long t_ini = micros();
     while(!(was_response_received = readMotorResponse()) and (micros()-t_ini) < timeout_us)

@@ -214,12 +214,14 @@ bool RmdMotor::requestPosition()
         else
         {
             //Serial.print("Retrying to recover requestPosition "); Serial.println(m_name);
-            //m_emptyMCP2515buffer();
-            m_mcp2515.clearRXnOVRFlags();
-            m_mcp2515.clearERRIF();
-            m_mcp2515.clearMERR();
-            m_mcp2515.clearInterrupts();
+            m_emptyMCP2515buffer();
+            // m_mcp2515.clearRXnOVRFlags();
+            // m_mcp2515.clearERRIF();
+            // m_mcp2515.clearMERR();
+            //m_mcp2515.clearInterrupts();
             m_last_response_time_ms = millis();
+            m_requestPosition();
+            return false;
         }
     }
     return m_requestPosition();
