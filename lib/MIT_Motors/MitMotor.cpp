@@ -26,18 +26,19 @@ MitMotor::MitMotor(const MotorType & motor_type, const uint8_t _CS, const uint8_
 
 void MitMotor::handleInterrupt(void)
 {
+    m_last_response_time_ms = millis();
     uint8_t irq = m_mcp2515.getInterrupts();
     //Serial.println(irq,BIN);
     if (irq & MCP2515::CANINTF_MERRF)
     {
-        Serial.println("\n\n!!!!!ERROR MERF (ERROR IN MESSAGE TRANSMISSION OR RECEPTION)!!!\n\n");
+        Serial.print("\n\n!!!!!ERROR MERF (ERROR IN MESSAGE TRANSMISSION OR RECEPTION)!!!"); Serial.print(m_name); Serial.print("\n\n");
         m_mcp2515.clearMERR();
         m_mcp2515.clearInterrupts();
     }
     if (irq & MCP2515::CANINTF_ERRIF)
     {
         //uint8_t err = m_mcp2515.getErrorFlags();
-        Serial.println("\n\n!!!!!!!ERROR BUFFER FULL!!!!!!\n\n");
+        Serial.print("\n\n!!!!!!!ERROR BUFFER FULL!!!!!!"); Serial.print(m_name); Serial.print("\n\n");
         //m_emptyMCP2515buffer();
         m_mcp2515.clearRXnOVRFlags();
         m_mcp2515.clearERRIF();
@@ -50,6 +51,7 @@ void MitMotor::handleInterrupt(void)
 
 bool MitMotor::turnOn()
 {
+    stopAutoMode();
     can_frame can_msg;
     can_msg.can_id  = 0x01;
     can_msg.can_dlc = 0x08;
@@ -67,6 +69,7 @@ bool MitMotor::turnOn()
 
 bool MitMotor::turnOff()
 {
+    stopAutoMode();
     can_frame can_msg;
     can_msg.can_id  = 0x01;
     can_msg.can_dlc = 0x08;
@@ -84,6 +87,7 @@ bool MitMotor::turnOff()
 
 bool MitMotor::setCurrentPositionAsZero()
 {
+    stopAutoMode();
     can_frame can_msg;
     can_msg.can_id  = 0x01;
     can_msg.can_dlc = 0x08;
@@ -100,9 +104,6 @@ bool MitMotor::setCurrentPositionAsZero()
 }
 
 
-
-
-//HERE
 
 
 bool MitMotor::m_sendTorque(float torque_setpoint)
@@ -123,7 +124,7 @@ bool MitMotor::m_sendTorque(float torque_setpoint)
     can_msg.data[5] = 0x0;
     can_msg.data[6] = t_int >> 8;
     can_msg.data[7] = t_int & 0xFF;
-    m_mcp2515.clearInterrupts();
+    //m_mcp2515.clearInterrupts();
     return m_mcp2515.sendMessage(&can_msg) == MCP2515::ERROR_OK ? true : false;
 }
 

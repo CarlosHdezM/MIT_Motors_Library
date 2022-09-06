@@ -5,6 +5,7 @@
 #include <mcp2515.h>
 
 #define DEBUG_ENABLED 1
+#define MILLIS_LIMIT_UNTIL_RETRY 50
 
 
 class CanMotor{
@@ -43,6 +44,8 @@ class CanMotor{
         const uint8_t m_interrupt_pin;
         bool m_is_auto_mode_running = false;
         float m_torque_setpoint;
+        unsigned long m_last_response_time_ms = 0;
+        //unsigned long m_last_msg_sent_time_ms = 0;
         can_frame response_msg;
         //Protected methods.
         bool m_sendAndReceiveBlocking(const can_frame & can_msg , unsigned long timeout_us);

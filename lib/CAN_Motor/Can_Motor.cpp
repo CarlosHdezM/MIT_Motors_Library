@@ -2,7 +2,6 @@
 
 
 
-
 CanMotor::CanMotor(const uint8_t _CS, const uint8_t _INT_PIN, const char * motor_name, SPIClass & spi, const bool doBegin)
     : m_interrupt_pin(_INT_PIN), m_name(motor_name), m_mcp2515{_CS, spi, doBegin}, m_torque(0), m_position(0), m_velocity(0), m_offset_from_zero_motor(0)
 {
@@ -45,11 +44,14 @@ bool CanMotor::initialize(const CAN_SPEED can_speed, CAN_CLOCK can_clock)
 
 
 void CanMotor::startAutoMode(void (*ISR_callback)(void)){
+    this->ISR_callback = ISR_callback;      
     m_is_auto_mode_running = true;
     m_emptyMCP2515buffer();
     m_mcp2515.clearInterrupts();
     pinMode(m_interrupt_pin, INPUT);
     attachInterrupt(digitalPinToInterrupt(m_interrupt_pin), ISR_callback, FALLING);
+    SPI.usingInterrupt(digitalPinToInterrupt(m_interrupt_pin));
+    m_last_response_time_ms = millis();
     m_sendTorque(m_torque_setpoint); 
     return;
 }
@@ -81,7 +83,28 @@ bool CanMotor::setTorque(float torque_setpoint, unsigned long timeout_us){
 bool CanMotor::setTorque(float torque_setpoint )
 {
     m_torque_setpoint = torque_setpoint;
-    return (m_is_auto_mode_running ? true : m_sendTorque(m_torque_setpoint));
+    //return (m_is_auto_mode_running ? true : m_sendTorque(m_torque_setpoint));
+    if(m_is_auto_mode_running)
+    {
+        if ((millis() - m_last_response_time_ms) < MILLIS_LIMIT_UNTIL_RETRY) //In auto mode, test if we received response 
+        {
+            Serial.println("All Ok, auto mode running normally");
+            return true; //Everything OK. Motor doesn't need communication "recovery"
+        }
+        else
+        {
+            Serial.print("\t Millis: "); Serial.print(millis()); Serial.print("\tLast message"); Serial.print(m_last_response_time_ms); Serial.print("\tRetrying to recover "); Serial.println(m_name); 
+            //m_emptyMCP2515buffer();
+            m_mcp2515.clearRXnOVRFlags();
+            m_mcp2515.clearERRIF();
+            m_mcp2515.clearMERR();
+            m_mcp2515.clearInterrupts();
+            m_last_response_time_ms = millis();
+            if (m_sendTorque(m_torque_setpoint)) {Serial.print("IN CLASS: Sent torque successfully to "); Serial.println(m_name); return true;}
+            else {Serial.print("IN CLASS: FAILED Sending torque to "); Serial.println(m_name); return false;}
+        }
+    }
+    return m_sendTorque(m_torque_setpoint);
 }
 
 
@@ -108,6 +131,7 @@ bool CanMotor::readMotorResponse()
 
 bool CanMotor::m_sendAndReceiveBlocking(const can_frame & can_msg , unsigned long timeout_us)
 {
+    stopAutoMode();
     m_emptyMCP2515buffer();
     MCP2515::ERROR response_code;
     unsigned long t_ini = micros();

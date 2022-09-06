@@ -94,18 +94,19 @@ RmdMotor::RmdMotor(const MotorType & motor_type, const uint8_t _CS, const uint8_
 
 void RmdMotor::handleInterrupt(void)
 {
+    m_last_response_time_ms = millis();
     uint8_t irq = m_mcp2515.getInterrupts();
     //Serial.println(irq,BIN);
     if (irq & MCP2515::CANINTF_MERRF)
     {
-        Serial.println("\n\n!!!!!ERROR MERF (ERROR IN MESSAGE TRANSMISSION OR RECEPTION)!!!\n\n");
+        Serial.print("\n\n!!!!!ERROR MERF (ERROR IN MESSAGE TRANSMISSION OR RECEPTION)!!!"); Serial.print(m_name); Serial.print("\n\n");
         m_mcp2515.clearMERR();
         m_mcp2515.clearInterrupts();
     }
     if (irq & MCP2515::CANINTF_ERRIF)
     {
         //uint8_t err = m_mcp2515.getErrorFlags();
-        Serial.println("\n\n!!!!!!!ERROR BUFFER FULL!!!!!!\n\n");
+        Serial.print("\n\n!!!!!!!ERROR BUFFER FULL!!!!!!"); Serial.print(m_name); Serial.print("\n\n");
         //m_emptyMCP2515buffer();
         m_mcp2515.clearRXnOVRFlags();
         m_mcp2515.clearERRIF();
@@ -145,7 +146,7 @@ bool RmdMotor::m_sendTorque(float torque_setpoint)
     can_msg.data[5] = msg_tx.bytes.b5;
     can_msg.data[6] = msg_tx.bytes.b6;
     can_msg.data[7] = msg_tx.bytes.b7;
-    m_mcp2515.clearInterrupts();
+    //m_mcp2515.clearInterrupts();
     return (m_mcp2515.sendMessage(&can_msg) == MCP2515::ERROR_OK) ? true : false;
 }
 
@@ -202,7 +203,26 @@ torque_msg_rx msg_rx;
 
 bool RmdMotor::requestPosition()
 {
-    return (m_is_auto_mode_running ? true : m_requestPosition());
+    //return (m_is_auto_mode_running ? true : m_requestPosition());
+    if(m_is_auto_mode_running)
+    {
+        if ((millis() - m_last_response_time_ms) < MILLIS_LIMIT_UNTIL_RETRY) //In auto mode, test if we received response 
+        {
+            //Serial.println("All Ok, auto mode running normally");
+            return true; //Everything OK. Motor doesn't need communication "recovery"
+        }
+        else
+        {
+            //Serial.print("Retrying to recover requestPosition "); Serial.println(m_name);
+            //m_emptyMCP2515buffer();
+            m_mcp2515.clearRXnOVRFlags();
+            m_mcp2515.clearERRIF();
+            m_mcp2515.clearMERR();
+            m_mcp2515.clearInterrupts();
+            m_last_response_time_ms = millis();
+        }
+    }
+    return m_requestPosition();
 }
 
 
@@ -220,12 +240,13 @@ bool RmdMotor::m_requestPosition()
     can_msg.data[5] = 0x00;
     can_msg.data[6] = 0x00;
     can_msg.data[7] = 0x00;
-    m_mcp2515.clearInterrupts();
+    //m_mcp2515.clearInterrupts();
     return (m_mcp2515.sendMessage(&can_msg) == MCP2515::ERROR_OK) ? true : false;
 }
 
 
 bool RmdMotor::turnOn(){
+    stopAutoMode();
     can_frame can_msg;
     can_msg.can_id  = 0x141;
     can_msg.can_dlc = 0x08;
@@ -250,6 +271,7 @@ bool RmdMotor::turnOn(){
 
 bool RmdMotor::turnOff() 
 {
+    stopAutoMode();
     can_frame can_msg;
     can_msg.can_id  = 0x141;
     can_msg.can_dlc = 0x08;
@@ -271,6 +293,7 @@ bool RmdMotor::turnOff()
 
 bool RmdMotor::setCurrentPositionAsZero()
 {
+    stopAutoMode();
     can_frame can_msg;
     can_msg.can_id  = 0x141;
     can_msg.can_dlc = 0x08;
