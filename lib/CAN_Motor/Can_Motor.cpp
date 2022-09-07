@@ -41,21 +41,17 @@ bool CanMotor::initialize(const CAN_SPEED can_speed, CAN_CLOCK can_clock)
 
 
 
-
-
 void CanMotor::startAutoMode(void (*ISR_callback)(void)){
-    this->ISR_callback = ISR_callback;      
     m_is_auto_mode_running = true;
     m_is_ready_to_send = true;
     m_emptyMCP2515buffer();
     m_mcp2515.clearInterrupts();
     pinMode(m_interrupt_pin, INPUT);
     attachInterrupt(digitalPinToInterrupt(m_interrupt_pin), ISR_callback, FALLING);
-    //SPI.usingInterrupt(digitalPinToInterrupt(m_interrupt_pin));
     m_last_response_time_ms = millis();
     return;
 }
-
+ 
 
 void CanMotor::stopAutoMode()
 {

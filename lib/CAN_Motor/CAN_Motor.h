@@ -19,7 +19,6 @@ class CanMotor{
         bool readMotorResponse(unsigned long timeout_us);
         void startAutoMode(void (*ISR_callback)(void));
         void stopAutoMode();
-        void (*ISR_callback)();
 
         virtual void handleInterrupt(void) = 0;        
         virtual bool setCurrentPositionAsOrigin() = 0;

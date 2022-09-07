@@ -174,7 +174,7 @@ bool RmdMotor::setTorque(float torque_setpoint )
             // m_mcp2515.clearMERR();
             //m_mcp2515.clearInterrupts();
             sei();
-            m_last_response_time_ms = millis();
+            //m_last_response_time_ms = millis();
             if (m_curr_state == 0)
             {
                 //Serial.println("Sending torque");
@@ -293,7 +293,7 @@ bool RmdMotor::requestPosition()
             // m_mcp2515.clearMERR();
             //m_mcp2515.clearInterrupts();
             sei();
-            m_last_response_time_ms = millis();
+            //m_last_response_time_ms = millis();
             m_requestPosition();
             return false;
         }
