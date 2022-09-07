@@ -100,38 +100,104 @@ void RmdMotor::handleInterrupt(void)
     if (irq & MCP2515::CANINTF_MERRF)
     {
         Serial.print("\n\n!!!!!ERROR MERF (ERROR IN MESSAGE TRANSMISSION OR RECEPTION)!!!"); Serial.print(m_name); Serial.print("\n\n");
+        cli();
         m_mcp2515.clearMERR();
         m_mcp2515.clearInterrupts();
+        sei();
     }
     if (irq & MCP2515::CANINTF_ERRIF)
     {
         //uint8_t err = m_mcp2515.getErrorFlags();
         Serial.print("\n\n!!!!!!!ERROR BUFFER FULL!!!!!!"); Serial.print(m_name); Serial.print("\n\n");
         //m_emptyMCP2515buffer();
+        cli();
         m_mcp2515.clearRXnOVRFlags();
         m_mcp2515.clearERRIF();
         m_mcp2515.clearInterrupts();
+        sei();
     }
-
     m_readMotorResponse();
-    if (m_curr_state == 0)
+    m_is_ready_to_send = true;
+}
+
+
+
+bool RmdMotor::setTorque(float torque_setpoint, unsigned long timeout_us){
+    if (m_is_auto_mode_running) 
     {
-        //Serial.println("Sending torque");
-        m_sendTorque(m_torque_setpoint);
-        m_curr_state = 1;
+        return setTorque(torque_setpoint);
     }
-    else
+    bool was_message_sent;
+    unsigned long t_ini = micros();
+    while(!(was_message_sent = setTorque(torque_setpoint)) and (micros()-t_ini) < timeout_us)
     {
-        //Serial.println("Requesting position");
-        m_requestPosition();
-        m_curr_state = 0;
+        //Serial.println("Send Retry!");           
     }
+    return was_message_sent;
+}
+
+
+//Refactor this function.
+bool RmdMotor::setTorque(float torque_setpoint )
+{
+    m_torque_setpoint = torque_setpoint;
+    if(m_is_auto_mode_running)
+    {
+        if (m_is_ready_to_send)
+        {
+            m_is_ready_to_send = false;
+            if (m_curr_state == 0)
+            {
+                //Serial.println("Sending torque");
+                m_curr_state = 1;
+                return m_sendTorque(m_torque_setpoint);
+            }
+            else
+            {
+                //Serial.println("Requesting position");
+                m_curr_state = 0;
+                return m_requestPosition();
+            }
+        }
+        else if ((millis() - m_last_response_time_ms) < MILLIS_LIMIT_UNTIL_RETRY) //In auto mode, test if we received response 
+        {
+            //Serial.println("All Ok, auto mode running normally");
+            return true; //Everything OK. Motor doesn't need communication "recovery"
+        }
+        else
+        {
+            //Serial.print("\t Millis: "); Serial.print(millis()); Serial.print("\tLast message"); Serial.print(m_last_response_time_ms); Serial.print("\tRetrying to recover "); Serial.println(m_name); 
+            cli();
+            m_emptyMCP2515buffer();
+            // m_mcp2515.clearRXnOVRFlags();
+            // m_mcp2515.clearERRIF();
+            // m_mcp2515.clearMERR();
+            //m_mcp2515.clearInterrupts();
+            sei();
+            m_last_response_time_ms = millis();
+            if (m_curr_state == 0)
+            {
+                //Serial.println("Sending torque");
+                m_curr_state = 1;
+                m_sendTorque(m_torque_setpoint);
+            }
+            else
+            {
+                //Serial.println("Requesting position");
+                m_curr_state = 0;
+                m_requestPosition();
+            }
+            return false;
+        }
+    }
+    return m_sendTorque(m_torque_setpoint);
 }
 
 
 
 bool RmdMotor::m_sendTorque(float torque_setpoint)
 {
+    
     can_frame can_msg;
     torque_msg_tx msg_tx;
     msg_tx.values.torque = (int16_t)(((torque_setpoint)/m_motor_type.KT)*AMPS_TO_RAW);
@@ -147,18 +213,24 @@ bool RmdMotor::m_sendTorque(float torque_setpoint)
     can_msg.data[6] = msg_tx.bytes.b6;
     can_msg.data[7] = msg_tx.bytes.b7;
     //m_mcp2515.clearInterrupts();
-    return (m_mcp2515.sendMessage(&can_msg) == MCP2515::ERROR_OK) ? true : false;
+    cli();
+    bool result = (m_mcp2515.sendMessage(&can_msg) == MCP2515::ERROR_OK);
+    sei();
+    return result;
 }
 
 
 
 bool RmdMotor::m_readMotorResponse()
 {
-torque_msg_rx msg_rx;  
+torque_msg_rx msg_rx;
+    cli();
     if(m_mcp2515.readMessage(&response_msg) != MCP2515::ERROR::ERROR_OK)
     { 
+        sei();
         return false;
     }
+    sei();
     /// unpack ints from can buffer ///
     switch (response_msg.data[0])
     {
@@ -214,11 +286,13 @@ bool RmdMotor::requestPosition()
         else
         {
             //Serial.print("Retrying to recover requestPosition "); Serial.println(m_name);
+            cli();
             m_emptyMCP2515buffer();
             // m_mcp2515.clearRXnOVRFlags();
             // m_mcp2515.clearERRIF();
             // m_mcp2515.clearMERR();
             //m_mcp2515.clearInterrupts();
+            sei();
             m_last_response_time_ms = millis();
             m_requestPosition();
             return false;
@@ -243,7 +317,10 @@ bool RmdMotor::m_requestPosition()
     can_msg.data[6] = 0x00;
     can_msg.data[7] = 0x00;
     //m_mcp2515.clearInterrupts();
-    return (m_mcp2515.sendMessage(&can_msg) == MCP2515::ERROR_OK) ? true : false;
+    cli();
+    bool result = m_mcp2515.sendMessage(&can_msg) == MCP2515::ERROR_OK;
+    sei();
+    return result;
 }
 
 

@@ -32,6 +32,8 @@ class MitMotor : public CanMotor{
         bool turnOn() override;
         bool turnOff() override;
         bool setCurrentPositionAsZero() override;
+        bool setTorque(float torque_setpoint);
+        bool setTorque(float torque_setpoint, unsigned long timeout_us);
         //bool readMotorResponse() override;
         //bool readMotorResponse(unsigned long timeout_us) override;
         bool setCurrentPositionAsOrigin() override;

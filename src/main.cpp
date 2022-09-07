@@ -247,48 +247,40 @@ void loop ()
         case SET_TORQUE_AND_READ:
         {
             Serial.println("\nVamos a escribir y leer continuamente");
-            elapsedMicros wait;
-            const uint16_t delay_us = 250;
+            elapsedMicros wait_to_print;
+            elapsedMicros wait_to_loop;
+            const uint16_t delay_loop_us = 25;
+            const uint16_t print_every_us = 5000;
             while (digitalRead(BOTON) == HIGH)
             {
-                bool print_once = true;
-                while(wait < delay_us)
-                {
-                    if (print_once)
-                    {
-                        print_once = false;
-                        //Serial.println("Hi");
-                        // Serial.print("Position: "); Serial.print(motor1.position(), 4);
-                        // Serial.print("\tTorque: "); Serial.print(motor1.torque(), 4);
-                        // Serial.print("\tVelocity: "); Serial.println(motor1.velocity(), 4);
+                while (wait_to_loop < delay_loop_us){}
+                wait_to_loop = 0;
+                if(wait_to_print > print_every_us){
+                    wait_to_print = 0;
+                    Serial.print("Position: "); Serial.print(motor1.position(), 4);
+                    Serial.print("\tTorque: "); Serial.print(motor1.torque(), 4);
+                    Serial.print("\tVelocity: "); Serial.println(motor1.velocity(), 4);
 
-                        // Serial.print("Position 2: "); Serial.print(motor2.position(), 4);
-                        // Serial.print("\tTorque 2: "); Serial.print(motor2.torque(), 4);
-                        // Serial.print("\tVelocity 2: "); Serial.println(motor2.velocity(), 4);                   
-                        // Serial.println();
-                    }
-                }
-                wait = 0;
-
-                if(!motor2.setTorque(0,3000)) { Serial.print("No se pudo enviar torque 0 a: "); Serial.println(motor2.name());}
-                else
-                {
                     Serial.print("Position 2: "); Serial.print(motor2.position(), 4);
                     Serial.print("\tTorque 2: "); Serial.print(motor2.torque(), 4);
                     Serial.print("\tVelocity 2: "); Serial.println(motor2.velocity(), 4);                   
                     Serial.println();
                 }
-                if(!motor1.setTorque(0,3000)) { Serial.print("No se pudo enviar torque 0 a: "); Serial.println(motor1.name());}
+
+                if(!motor2.setTorque(0)) { Serial.print("No se pudo enviar torque 0 a: "); Serial.println(motor2.name());}
                 else
                 {
-                    Serial.print("Position: "); Serial.print(motor1.position(), 4);
-                    Serial.print("\tTorque: "); Serial.print(motor1.torque(), 4);
-                    Serial.print("\tVelocity: "); Serial.println(motor1.velocity(), 4);
+                    //Serial.println("HI");
                 }
-                if(!motor2.readMotorResponse(1000))  { Serial.print("No se pudo leer respuesta de: "); Serial.println(motor2.name()); }
-                if(!motor2.requestPosition()) { Serial.print("No se pudo solicitar respuesta a: "); Serial.println(motor2.name()); }
-                if(!motor1.readMotorResponse(1500)) { Serial.print("No se pudo leer respuesta de: "); Serial.println(motor1.name()); }
-                if(!motor2.readMotorResponse(1500)) { Serial.print("No se pudo leer respuesta de: "); Serial.println(motor2.name()); }
+                if(!motor1.setTorque(0)) { Serial.print("No se pudo enviar torque 0 a: "); Serial.println(motor1.name());}
+                else
+                {
+
+                }
+                // if(!motor2.readMotorResponse(1000))  { Serial.print("No se pudo leer respuesta de: "); Serial.println(motor2.name()); }
+                // if(!motor2.requestPosition()) { Serial.print("No se pudo solicitar respuesta a: "); Serial.println(motor2.name()); }
+                // if(!motor1.readMotorResponse(1500)) { Serial.print("No se pudo leer respuesta de: "); Serial.println(motor1.name()); }
+                // if(!motor2.readMotorResponse(1500)) { Serial.print("No se pudo leer respuesta de: "); Serial.println(motor2.name()); }
 
                 digitalWrite(AUX_PIN_1,!digitalRead(AUX_PIN_1));
             }

@@ -13,8 +13,8 @@ class CanMotor{
         CanMotor(const uint8_t _CS, const uint8_t _INT_PIN, const char * motor_name = "DEFAULT_NAME", SPIClass & spi = SPI, const bool doBegin = true);
 
         bool initialize(const CAN_SPEED can_speed = CAN_1000KBPS, CAN_CLOCK can_clock = MCP_16MHZ);
-        bool setTorque(float torque_setpoint);
-        bool setTorque(float torque_setpoint, unsigned long timeout_us);
+        virtual bool setTorque(float torque_setpoint) = 0;
+        virtual bool setTorque(float torque_setpoint, unsigned long timeout_us) = 0;
         bool readMotorResponse();
         bool readMotorResponse(unsigned long timeout_us);
         void startAutoMode(void (*ISR_callback)(void));
@@ -44,7 +44,8 @@ class CanMotor{
         const uint8_t m_interrupt_pin;
         bool m_is_auto_mode_running = false;
         float m_torque_setpoint;
-        unsigned long m_last_response_time_ms = 0;
+        unsigned long m_last_response_time_ms = false;
+        bool m_is_ready_to_send = true;
         //unsigned long m_last_msg_sent_time_ms = 0;
         can_frame response_msg;
         //Protected methods.
