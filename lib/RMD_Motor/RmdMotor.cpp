@@ -36,6 +36,7 @@ const RmdMotor::MotorType RmdMotor::RMD_X8_PRO_V3{REDUCTION_6_TO_1, X8_PRO_V3_KT
 const RmdMotor::MotorType RmdMotor::RMD_L5015{REDUCTION_1_TO_1, L5015_KT};
 
 
+
 union torque_msg_tx
 {
     struct
@@ -59,6 +60,7 @@ union torque_msg_tx
         uint8_t b7;
     } bytes;
 };
+
 
 
 union torque_msg_rx
@@ -86,10 +88,176 @@ union torque_msg_rx
 };
 
 
+
 RmdMotor::RmdMotor(const MotorType & motor_type, const uint8_t _CS, const uint8_t _INT_PIN, const char * motor_name, SPIClass & spi, const bool doBegin)
-    : m_motor_type(motor_type), CanMotor{_CS, _INT_PIN, motor_name, spi, doBegin}
+    : CanMotor{_CS, _INT_PIN, motor_name, spi, doBegin}, m_motor_type(motor_type)
 {
 }
+
+
+
+bool RmdMotor::turnOn()
+{
+    stopAutoMode();
+    can_frame can_msg;
+    can_msg.can_id  = 0x141;
+    can_msg.can_dlc = 0x08;
+    can_msg.data[0] = UPDATE_STATUS_COMMAND;
+    can_msg.data[1] = 0x00;
+    can_msg.data[2] = 0x00;
+    can_msg.data[3] = 0x00;
+    can_msg.data[4] = 0x00;
+    can_msg.data[5] = 0x00;
+    can_msg.data[6] = 0x00;
+    can_msg.data[7] = 0x00;
+    
+    if (!m_sendAndReceiveBlocking(can_msg, 1000000)) return false;
+
+    can_msg.data[0] = REQUEST_POS_COMMAND;
+    return m_sendAndReceiveBlocking(can_msg, 1000000);
+}
+
+
+
+bool RmdMotor::turnOff() 
+{
+    stopAutoMode();
+    can_frame can_msg;
+    can_msg.can_id  = 0x141;
+    can_msg.can_dlc = 0x08;
+    can_msg.data[0] = TURN_OFF_COMMAND;
+    can_msg.data[1] = 0x00;
+    can_msg.data[2] = 0x00;
+    can_msg.data[3] = 0x00;
+    can_msg.data[4] = 0x00;
+    can_msg.data[5] = 0x00;
+    can_msg.data[6] = 0x00;
+    can_msg.data[7] = 0x00;
+    if (!m_sendAndReceiveBlocking(can_msg, 1000000)) return false;
+
+    can_msg.data[0] = REQUEST_POS_COMMAND;
+    return m_sendAndReceiveBlocking(can_msg, 1000000);
+}
+
+
+
+//Refactor this function.
+bool RmdMotor::setTorque(float torque_setpoint )
+{
+    if(m_is_auto_mode_running)
+    {
+        if (m_is_ready_to_send)
+        {
+            m_is_ready_to_send = false;
+            if (m_curr_state == 0)
+            {
+                //Serial.println("Sending torque");
+                m_curr_state = 1;
+                return m_sendTorque(torque_setpoint);
+            }
+            else
+            {
+                //Serial.println("Requesting position");
+                m_curr_state = 0;
+                return m_requestPosition();
+            }
+        }
+        else if ((millis() - m_last_response_time_ms) < MILLIS_LIMIT_UNTIL_RETRY) //In auto mode, test if we received response 
+        {
+            //Serial.println("All Ok, auto mode running normally");
+            return true; //Everything OK. Motor doesn't need communication "recovery"
+        }
+        else
+        {
+            //Serial.print("\t Millis: "); Serial.print(millis()); Serial.print("\tLast message"); Serial.print(m_last_response_time_ms); Serial.print("\tRetrying to recover "); Serial.println(m_name); 
+            cli();
+            m_emptyMCP2515buffer();
+            // m_mcp2515.clearRXnOVRFlags();
+            // m_mcp2515.clearERRIF();
+            // m_mcp2515.clearMERR();
+            //m_mcp2515.clearInterrupts();
+            sei();
+            //m_last_response_time_ms = millis();
+            if (m_curr_state == 0)
+            {
+                //Serial.println("Sending torque");
+                m_curr_state = 1;
+                m_sendTorque(torque_setpoint);
+            }
+            else
+            {
+                //Serial.println("Requesting position");
+                m_curr_state = 0;
+                m_requestPosition();
+            }
+            return false;
+        }
+    }
+    return m_sendTorque(torque_setpoint);
+}
+
+
+
+bool RmdMotor::setTorque(float torque_setpoint, unsigned long timeout_us){
+    if (m_is_auto_mode_running) 
+    {
+        return setTorque(torque_setpoint);
+    }
+    bool was_message_sent;
+    unsigned long t_ini = micros();
+    while(!(was_message_sent = setTorque(torque_setpoint)) and (micros()-t_ini) < timeout_us)
+    {
+        //Serial.println("Send Retry!");           
+    }
+    return was_message_sent;
+}
+
+
+
+bool RmdMotor::setCurrentPositionAsZero()
+{
+    stopAutoMode();
+    can_frame can_msg;
+    can_msg.can_id  = 0x141;
+    can_msg.can_dlc = 0x08;
+    can_msg.data[0] = SET_ZERO_POS_COMMAND;
+    can_msg.data[1] = 0x00;
+    can_msg.data[2] = 0x00;
+    can_msg.data[3] = 0x00;
+    can_msg.data[4] = 0x00;
+    can_msg.data[5] = 0x00;
+    can_msg.data[6] = 0x00;
+    can_msg.data[7] = 0x00;
+    if (!m_sendAndReceiveBlocking(can_msg, 1000000)) return false;
+    can_msg.data[0] = REQUEST_POS_COMMAND;
+    if (!m_sendAndReceiveBlocking(can_msg, 1000000)) return false;
+    m_offset_from_zero_motor = m_position;
+    return true;
+}
+
+
+
+bool RmdMotor::setCurrentPositionAsOrigin(){
+    can_frame can_msg;
+    can_msg.can_id  = 0x141;
+    can_msg.can_dlc = 0x08;
+    can_msg.data[0] = REQUEST_POS_COMMAND;
+    can_msg.data[1] = 0x00;
+    can_msg.data[2] = 0x00;
+    can_msg.data[3] = 0x00;
+    can_msg.data[4] = 0x00;
+    can_msg.data[5] = 0x00;
+    can_msg.data[6] = 0x00;
+    can_msg.data[7] = 0x00;
+    //actualizar m_offset... con el nuevo valor de posición. 
+    if (! m_sendAndReceiveBlocking(can_msg, 1000000))
+    {
+        return false;
+    }
+    m_offset_from_zero_motor = m_position;
+    return true;
+}
+
 
 
 void RmdMotor::handleInterrupt(void)
@@ -122,51 +290,19 @@ void RmdMotor::handleInterrupt(void)
 
 
 
-bool RmdMotor::setTorque(float torque_setpoint, unsigned long timeout_us){
-    if (m_is_auto_mode_running) 
-    {
-        return setTorque(torque_setpoint);
-    }
-    bool was_message_sent;
-    unsigned long t_ini = micros();
-    while(!(was_message_sent = setTorque(torque_setpoint)) and (micros()-t_ini) < timeout_us)
-    {
-        //Serial.println("Send Retry!");           
-    }
-    return was_message_sent;
-}
-
-
-//Refactor this function.
-bool RmdMotor::setTorque(float torque_setpoint )
+bool RmdMotor::requestPosition()
 {
-    m_torque_setpoint = torque_setpoint;
+    //return (m_is_auto_mode_running ? true : m_requestPosition());
     if(m_is_auto_mode_running)
     {
-        if (m_is_ready_to_send)
-        {
-            m_is_ready_to_send = false;
-            if (m_curr_state == 0)
-            {
-                //Serial.println("Sending torque");
-                m_curr_state = 1;
-                return m_sendTorque(m_torque_setpoint);
-            }
-            else
-            {
-                //Serial.println("Requesting position");
-                m_curr_state = 0;
-                return m_requestPosition();
-            }
-        }
-        else if ((millis() - m_last_response_time_ms) < MILLIS_LIMIT_UNTIL_RETRY) //In auto mode, test if we received response 
+        if ((millis() - m_last_response_time_ms) < MILLIS_LIMIT_UNTIL_RETRY) //In auto mode, test if we received response 
         {
             //Serial.println("All Ok, auto mode running normally");
             return true; //Everything OK. Motor doesn't need communication "recovery"
         }
         else
         {
-            //Serial.print("\t Millis: "); Serial.print(millis()); Serial.print("\tLast message"); Serial.print(m_last_response_time_ms); Serial.print("\tRetrying to recover "); Serial.println(m_name); 
+            //Serial.print("Retrying to recover requestPosition "); Serial.println(m_name);
             cli();
             m_emptyMCP2515buffer();
             // m_mcp2515.clearRXnOVRFlags();
@@ -175,22 +311,11 @@ bool RmdMotor::setTorque(float torque_setpoint )
             //m_mcp2515.clearInterrupts();
             sei();
             //m_last_response_time_ms = millis();
-            if (m_curr_state == 0)
-            {
-                //Serial.println("Sending torque");
-                m_curr_state = 1;
-                m_sendTorque(m_torque_setpoint);
-            }
-            else
-            {
-                //Serial.println("Requesting position");
-                m_curr_state = 0;
-                m_requestPosition();
-            }
+            m_requestPosition();
             return false;
         }
     }
-    return m_sendTorque(m_torque_setpoint);
+    return m_requestPosition();
 }
 
 
@@ -273,36 +398,6 @@ torque_msg_rx msg_rx;
 
 
 
-bool RmdMotor::requestPosition()
-{
-    //return (m_is_auto_mode_running ? true : m_requestPosition());
-    if(m_is_auto_mode_running)
-    {
-        if ((millis() - m_last_response_time_ms) < MILLIS_LIMIT_UNTIL_RETRY) //In auto mode, test if we received response 
-        {
-            //Serial.println("All Ok, auto mode running normally");
-            return true; //Everything OK. Motor doesn't need communication "recovery"
-        }
-        else
-        {
-            //Serial.print("Retrying to recover requestPosition "); Serial.println(m_name);
-            cli();
-            m_emptyMCP2515buffer();
-            // m_mcp2515.clearRXnOVRFlags();
-            // m_mcp2515.clearERRIF();
-            // m_mcp2515.clearMERR();
-            //m_mcp2515.clearInterrupts();
-            sei();
-            //m_last_response_time_ms = millis();
-            m_requestPosition();
-            return false;
-        }
-    }
-    return m_requestPosition();
-}
-
-
-
 bool RmdMotor::m_requestPosition()
 {
     can_frame can_msg;
@@ -322,98 +417,3 @@ bool RmdMotor::m_requestPosition()
     sei();
     return result;
 }
-
-
-bool RmdMotor::turnOn(){
-    stopAutoMode();
-    can_frame can_msg;
-    can_msg.can_id  = 0x141;
-    can_msg.can_dlc = 0x08;
-    can_msg.data[0] = UPDATE_STATUS_COMMAND;
-    can_msg.data[1] = 0x00;
-    can_msg.data[2] = 0x00;
-    can_msg.data[3] = 0x00;
-    can_msg.data[4] = 0x00;
-    can_msg.data[5] = 0x00;
-    can_msg.data[6] = 0x00;
-    can_msg.data[7] = 0x00;
-    
-    if (!m_sendAndReceiveBlocking(can_msg, 1000000)) return false;
-
-    can_msg.data[0] = REQUEST_POS_COMMAND;
-    return m_sendAndReceiveBlocking(can_msg, 1000000);
-
-
-}
-
-
-
-bool RmdMotor::turnOff() 
-{
-    stopAutoMode();
-    can_frame can_msg;
-    can_msg.can_id  = 0x141;
-    can_msg.can_dlc = 0x08;
-    can_msg.data[0] = TURN_OFF_COMMAND;
-    can_msg.data[1] = 0x00;
-    can_msg.data[2] = 0x00;
-    can_msg.data[3] = 0x00;
-    can_msg.data[4] = 0x00;
-    can_msg.data[5] = 0x00;
-    can_msg.data[6] = 0x00;
-    can_msg.data[7] = 0x00;
-    if (!m_sendAndReceiveBlocking(can_msg, 1000000)) return false;
-
-    can_msg.data[0] = REQUEST_POS_COMMAND;
-    return m_sendAndReceiveBlocking(can_msg, 1000000);
-}
-
-
-
-bool RmdMotor::setCurrentPositionAsZero()
-{
-    stopAutoMode();
-    can_frame can_msg;
-    can_msg.can_id  = 0x141;
-    can_msg.can_dlc = 0x08;
-    can_msg.data[0] = SET_ZERO_POS_COMMAND;
-    can_msg.data[1] = 0x00;
-    can_msg.data[2] = 0x00;
-    can_msg.data[3] = 0x00;
-    can_msg.data[4] = 0x00;
-    can_msg.data[5] = 0x00;
-    can_msg.data[6] = 0x00;
-    can_msg.data[7] = 0x00;
-    if (!m_sendAndReceiveBlocking(can_msg, 1000000)) return false;
-    can_msg.data[0] = REQUEST_POS_COMMAND;
-    if (!m_sendAndReceiveBlocking(can_msg, 1000000)) return false;
-    m_offset_from_zero_motor = m_position;
-    return true;
-}
-
-
-
-bool RmdMotor::setCurrentPositionAsOrigin(){
-    can_frame can_msg;
-    can_msg.can_id  = 0x141;
-    can_msg.can_dlc = 0x08;
-    can_msg.data[0] = REQUEST_POS_COMMAND;
-    can_msg.data[1] = 0x00;
-    can_msg.data[2] = 0x00;
-    can_msg.data[3] = 0x00;
-    can_msg.data[4] = 0x00;
-    can_msg.data[5] = 0x00;
-    can_msg.data[6] = 0x00;
-    can_msg.data[7] = 0x00;
-    //actualizar m_offset... con el nuevo valor de posición. 
-    if (! m_sendAndReceiveBlocking(can_msg, 1000000))
-    {
-        return false;
-    }
-    m_offset_from_zero_motor = m_position;
-    return true;
-}
-
-
-
-

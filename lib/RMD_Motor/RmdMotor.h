@@ -22,18 +22,20 @@ class RmdMotor : public CanMotor{
         static const MotorType RMD_X8_PRO_V3;
         static const MotorType RMD_L5015;
 
+        RmdMotor(const MotorType & motor_type, const uint8_t _CS, const uint8_t _INT_PIN, const char * motor_name = "DEFAULT_RMD", SPIClass & spi = SPI, const bool doBegin = true);
+
+        //Public member functions that this class defines (overrides from the base):
+        bool turnOn() override;
+        bool turnOff() override;
+        bool setTorque(float torque_setpoint) override;
+        bool setTorque(float torque_setpoint, unsigned long timeout_us) override;
+        bool setCurrentPositionAsZero() override;
+        bool setCurrentPositionAsOrigin() override;
+        void handleInterrupt(void) override;
+
         //Public member functions exlusive for RMD motors
         bool requestPosition();
 
-        //Public member functions shared by all CAN motor types. 
-        RmdMotor(const MotorType & motor_type, const uint8_t _CS, const uint8_t _INT_PIN, const char * motor_name = "DEFAULT_RMD", SPIClass & spi = SPI, const bool doBegin = true);
-        void handleInterrupt(void);
-        bool turnOn() override;
-        bool turnOff() override;
-        bool setCurrentPositionAsZero() override;
-        bool setCurrentPositionAsOrigin() override;
-        bool setTorque(float torque_setpoint) override;
-        bool setTorque(float torque_setpoint, unsigned long timeout_us) override;
 
     private:
         //Private member variables
@@ -41,12 +43,10 @@ class RmdMotor : public CanMotor{
         uint8_t m_temperature;
         volatile bool m_curr_state = 0;
 
+        //Private member functions that this class defines (overrides from the base):
         bool m_sendTorque(float torque_setpoint);
-        bool m_requestPosition();
         bool m_readMotorResponse() override;
 
-
-
-
-
+        //Private member functions exclusive for RMD Motors.
+        bool m_requestPosition();
 };

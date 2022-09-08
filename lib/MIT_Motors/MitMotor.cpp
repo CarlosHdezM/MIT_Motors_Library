@@ -19,9 +19,128 @@ const float MitMotor::MotorType::KD_MAX = 5.0f;
 
 
 MitMotor::MitMotor(const MotorType & motor_type, const uint8_t _CS, const uint8_t _INT_PIN, const char * motor_name, SPIClass & spi, const bool doBegin)
-    : m_motor_type(motor_type), CanMotor{_CS, _INT_PIN, motor_name, spi, doBegin}
+    : CanMotor{_CS, _INT_PIN, motor_name, spi, doBegin}, m_motor_type(motor_type)
 {
 }
+
+
+
+bool MitMotor::turnOn()
+{
+    stopAutoMode();
+    can_frame can_msg;
+    can_msg.can_id  = 0x01;
+    can_msg.can_dlc = 0x08;
+    can_msg.data[0] = 0xFF;
+    can_msg.data[1] = 0xFF;
+    can_msg.data[2] = 0xFF;
+    can_msg.data[3] = 0xFF;
+    can_msg.data[4] = 0xFF;
+    can_msg.data[5] = 0xFF;
+    can_msg.data[6] = 0xFF;
+    can_msg.data[7] = TURN_ON_COMMAND;
+    return m_sendAndReceiveBlocking(can_msg, 2000000);
+}
+
+
+
+bool MitMotor::turnOff()
+{
+    stopAutoMode();
+    can_frame can_msg;
+    can_msg.can_id  = 0x01;
+    can_msg.can_dlc = 0x08;
+    can_msg.data[0] = 0xFF;
+    can_msg.data[1] = 0xFF;
+    can_msg.data[2] = 0xFF;
+    can_msg.data[3] = 0xFF;
+    can_msg.data[4] = 0xFF;
+    can_msg.data[5] = 0xFF;
+    can_msg.data[6] = 0xFF;
+    can_msg.data[7] = TURN_OFF_COMMAND;
+    return m_sendAndReceiveBlocking(can_msg, 2000000);
+}
+
+
+
+//Refactor this function.
+bool MitMotor::setTorque(float torque_setpoint )
+{
+    if(m_is_auto_mode_running)
+    {
+        if (m_is_ready_to_send)
+        {
+            m_is_ready_to_send = false;
+            return m_sendTorque(torque_setpoint);
+        }
+
+        else if ((millis() - m_last_response_time_ms) < MILLIS_LIMIT_UNTIL_RETRY) //In auto mode, test if we received response 
+        {
+            //Serial.println("All Ok, auto mode running normally");
+            return true; //Everything OK. Motor doesn't need communication "recovery"
+        }
+        else
+        {
+            //Serial.print("\t Millis: "); Serial.print(millis()); Serial.print("\tLast message"); Serial.print(m_last_response_time_ms); Serial.print("\tRetrying to recover "); Serial.println(m_name); 
+            cli();
+            m_emptyMCP2515buffer();
+            // m_mcp2515.clearRXnOVRFlags();
+            // m_mcp2515.clearERRIF();
+            // m_mcp2515.clearMERR();
+            //m_mcp2515.clearInterrupts();
+            sei();
+            //m_last_response_time_ms = millis();
+            m_sendTorque(torque_setpoint);
+            return false;
+        }
+    }
+    return m_sendTorque(torque_setpoint);
+}
+
+
+
+bool MitMotor::setTorque(float torque_setpoint, unsigned long timeout_us){
+    if (m_is_auto_mode_running) 
+    {
+        return setTorque(torque_setpoint);
+    }
+    bool was_message_sent;
+    unsigned long t_ini = micros();
+    while(!(was_message_sent = setTorque(torque_setpoint)) and (micros()-t_ini) < timeout_us)
+    {
+        //Serial.println("Send Retry!");           
+    }
+    return was_message_sent;
+}
+
+
+
+bool MitMotor::setCurrentPositionAsZero()
+{
+    stopAutoMode();
+    can_frame can_msg;
+    can_msg.can_id  = 0x01;
+    can_msg.can_dlc = 0x08;
+    can_msg.data[0] = 0xFF;
+    can_msg.data[1] = 0xFF;
+    can_msg.data[2] = 0xFF;
+    can_msg.data[3] = 0xFF;
+    can_msg.data[4] = 0xFF;
+    can_msg.data[5] = 0xFF;
+    can_msg.data[6] = 0xFF;
+    can_msg.data[7] = SET_ZERO_COMMAND;
+    if (!m_sendAndReceiveBlocking(can_msg, 2000000)) return false;
+    return setCurrentPositionAsOrigin(); //This second command is used ALSO to get a correct new position value, since the SET_ZERO_COMMAND returns the motor position BEFORE the new zero was set.
+}
+
+
+
+bool MitMotor::setCurrentPositionAsOrigin(){
+    if (!turnOn()) return false;
+    m_offset_from_zero_motor = m_position;
+    return true;
+}
+
 
 
 void MitMotor::handleInterrupt(void)
@@ -52,112 +171,6 @@ void MitMotor::handleInterrupt(void)
     m_is_ready_to_send = true;
 }
 
-
-bool MitMotor::turnOn()
-{
-    stopAutoMode();
-    can_frame can_msg;
-    can_msg.can_id  = 0x01;
-    can_msg.can_dlc = 0x08;
-    can_msg.data[0] = 0xFF;
-    can_msg.data[1] = 0xFF;
-    can_msg.data[2] = 0xFF;
-    can_msg.data[3] = 0xFF;
-    can_msg.data[4] = 0xFF;
-    can_msg.data[5] = 0xFF;
-    can_msg.data[6] = 0xFF;
-    can_msg.data[7] = TURN_ON_COMMAND;
-    return m_sendAndReceiveBlocking(can_msg, 2000000);
-}
-
-
-bool MitMotor::turnOff()
-{
-    stopAutoMode();
-    can_frame can_msg;
-    can_msg.can_id  = 0x01;
-    can_msg.can_dlc = 0x08;
-    can_msg.data[0] = 0xFF;
-    can_msg.data[1] = 0xFF;
-    can_msg.data[2] = 0xFF;
-    can_msg.data[3] = 0xFF;
-    can_msg.data[4] = 0xFF;
-    can_msg.data[5] = 0xFF;
-    can_msg.data[6] = 0xFF;
-    can_msg.data[7] = TURN_OFF_COMMAND;
-    return m_sendAndReceiveBlocking(can_msg, 2000000);
-}
-
-
-bool MitMotor::setCurrentPositionAsZero()
-{
-    stopAutoMode();
-    can_frame can_msg;
-    can_msg.can_id  = 0x01;
-    can_msg.can_dlc = 0x08;
-    can_msg.data[0] = 0xFF;
-    can_msg.data[1] = 0xFF;
-    can_msg.data[2] = 0xFF;
-    can_msg.data[3] = 0xFF;
-    can_msg.data[4] = 0xFF;
-    can_msg.data[5] = 0xFF;
-    can_msg.data[6] = 0xFF;
-    can_msg.data[7] = SET_ZERO_COMMAND;
-    if (!m_sendAndReceiveBlocking(can_msg, 2000000)) return false;
-    return setCurrentPositionAsOrigin(); //This second command is used ALSO to get a correct new position value, since the SET_ZERO_COMMAND returns the motor position BEFORE the new zero was set.
-}
-
-
-
-bool MitMotor::setTorque(float torque_setpoint, unsigned long timeout_us){
-    if (m_is_auto_mode_running) 
-    {
-        return setTorque(torque_setpoint);
-    }
-    bool was_message_sent;
-    unsigned long t_ini = micros();
-    while(!(was_message_sent = setTorque(torque_setpoint)) and (micros()-t_ini) < timeout_us)
-    {
-        //Serial.println("Send Retry!");           
-    }
-    return was_message_sent;
-}
-
-
-//Refactor this function.
-bool MitMotor::setTorque(float torque_setpoint )
-{
-    m_torque_setpoint = torque_setpoint;
-    if(m_is_auto_mode_running)
-    {
-        if (m_is_ready_to_send)
-        {
-            m_is_ready_to_send = false;
-            return m_sendTorque(m_torque_setpoint);
-        }
-
-        else if ((millis() - m_last_response_time_ms) < MILLIS_LIMIT_UNTIL_RETRY) //In auto mode, test if we received response 
-        {
-            //Serial.println("All Ok, auto mode running normally");
-            return true; //Everything OK. Motor doesn't need communication "recovery"
-        }
-        else
-        {
-            //Serial.print("\t Millis: "); Serial.print(millis()); Serial.print("\tLast message"); Serial.print(m_last_response_time_ms); Serial.print("\tRetrying to recover "); Serial.println(m_name); 
-            cli();
-            m_emptyMCP2515buffer();
-            // m_mcp2515.clearRXnOVRFlags();
-            // m_mcp2515.clearERRIF();
-            // m_mcp2515.clearMERR();
-            //m_mcp2515.clearInterrupts();
-            sei();
-            //m_last_response_time_ms = millis();
-            m_sendTorque(m_torque_setpoint);
-            return false;
-        }
-    }
-    return m_sendTorque(m_torque_setpoint);
-}
 
 
 bool MitMotor::m_sendTorque(float torque_setpoint)
@@ -207,13 +220,6 @@ bool MitMotor::m_readMotorResponse(){
 }
 
 
-bool MitMotor::setCurrentPositionAsOrigin(){
-    if (!turnOn()) return false;
-    m_offset_from_zero_motor = m_position;
-    return true;
-}
-
-
 
 unsigned int MitMotor::m_float_to_uint(float x, float x_min, float x_max) 
 {
@@ -222,6 +228,7 @@ unsigned int MitMotor::m_float_to_uint(float x, float x_min, float x_max)
     float offset = x_min;
     return (unsigned int) ((x - offset) * 4095.0 / span);
 }
+
 
 
 float MitMotor::m_uint_to_float(unsigned int x_int, float x_min, float x_max, int bits) 

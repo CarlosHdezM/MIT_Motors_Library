@@ -3,7 +3,8 @@
 
 
 CanMotor::CanMotor(const uint8_t _CS, const uint8_t _INT_PIN, const char * motor_name, SPIClass & spi, const bool doBegin)
-    : m_interrupt_pin(_INT_PIN), m_name(motor_name), m_mcp2515{_CS, spi, doBegin}, m_torque(0), m_position(0), m_velocity(0), m_offset_from_zero_motor(0)
+    : m_position(0), m_velocity(0), m_torque(0), m_name(motor_name), m_offset_from_zero_motor(0), m_interrupt_pin(_INT_PIN),
+      m_is_auto_mode_running(false), m_last_response_time_ms(0), m_is_ready_to_send(true), m_mcp2515{_CS, spi, doBegin}
 {
 
 }
@@ -41,27 +42,10 @@ bool CanMotor::initialize(const CAN_SPEED can_speed, CAN_CLOCK can_clock)
 
 
 
-void CanMotor::startAutoMode(void (*ISR_callback)(void)){
-    m_is_auto_mode_running = true;
-    m_is_ready_to_send = true;
-    m_emptyMCP2515buffer();
-    m_mcp2515.clearInterrupts();
-    pinMode(m_interrupt_pin, INPUT);
-    attachInterrupt(digitalPinToInterrupt(m_interrupt_pin), ISR_callback, FALLING);
-    m_last_response_time_ms = millis();
-    return;
-}
- 
-
-void CanMotor::stopAutoMode()
+bool CanMotor::readMotorResponse()
 {
-    m_is_auto_mode_running = false;
-    detachInterrupt(digitalPinToInterrupt(m_interrupt_pin));
-    m_emptyMCP2515buffer();
-    m_mcp2515.clearInterrupts();
-    return;
+    return (m_is_auto_mode_running ? true : m_readMotorResponse());
 }
-
 
 
 
@@ -79,9 +63,26 @@ bool CanMotor::readMotorResponse(unsigned long timeout_us)
 
 
 
-bool CanMotor::readMotorResponse()
+void CanMotor::startAutoMode(void (*ISR_callback)(void)){
+    m_is_auto_mode_running = true;
+    m_is_ready_to_send = true;
+    m_emptyMCP2515buffer();
+    m_mcp2515.clearInterrupts();
+    pinMode(m_interrupt_pin, INPUT);
+    attachInterrupt(digitalPinToInterrupt(m_interrupt_pin), ISR_callback, FALLING);
+    m_last_response_time_ms = millis();
+    return;
+}
+ 
+
+
+void CanMotor::stopAutoMode()
 {
-    return (m_is_auto_mode_running ? true : m_readMotorResponse());
+    m_is_auto_mode_running = false;
+    detachInterrupt(digitalPinToInterrupt(m_interrupt_pin));
+    m_emptyMCP2515buffer();
+    m_mcp2515.clearInterrupts();
+    return;
 }
 
 
