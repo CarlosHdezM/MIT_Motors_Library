@@ -34,7 +34,6 @@ class MitMotor : public CanMotor{
         bool setTorque(float torque_setpoint, unsigned long timeout_us) override;
         bool setCurrentPositionAsZero() override;
         bool setCurrentPositionAsOrigin() override;
-        void handleInterrupt(void);
 
 
     private:

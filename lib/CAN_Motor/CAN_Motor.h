@@ -18,6 +18,7 @@ class CanMotor{
         bool readMotorResponse(unsigned long timeout_us);
         void startAutoMode(void (*ISR_callback)(void));
         void stopAutoMode();
+        void handleInterrupt(void);        
 
         //Public member functions that each derived class must define.
         virtual bool turnOn() = 0;
@@ -26,7 +27,6 @@ class CanMotor{
         virtual bool setTorque(float torque_setpoint, unsigned long timeout_us) = 0;
         virtual bool setCurrentPositionAsZero() = 0;
         virtual bool setCurrentPositionAsOrigin() = 0;
-        virtual void handleInterrupt(void) = 0;        
 
         //Public "getters" to motor response variables. 
         float position() const {return m_position - m_offset_from_zero_motor;}

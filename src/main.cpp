@@ -41,6 +41,10 @@ void setup()
     digitalWrite(AUX_PIN_1,LOW);
     delay(500);
 
+    Serial.println("Sizes:");
+    Serial.println(sizeof(uint8_t));
+    Serial.println(sizeof(MitMotor));
+    Serial.println(sizeof(RmdMotor));
 
     for (auto & motor : motors)
     {
@@ -266,6 +270,12 @@ void loop ()
             motors[0]->startAutoMode([](){motors[0]->handleInterrupt();});
             Serial.print("Starting auto mode for:"); Serial.println(motors[1]->name());
             motors[1]->startAutoMode([](){motors[1]->handleInterrupt();});
+
+            //void(*p[1])() = {motors[0]->handleInterrupt};
+            //p[0] = motors[0]->handleInterrupt;
+
+            //auto hi = motors[0]->handleInterrupt;
+
             current_state = PRINT_MENU;
             break;
 

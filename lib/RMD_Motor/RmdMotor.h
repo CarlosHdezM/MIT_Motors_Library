@@ -31,7 +31,6 @@ class RmdMotor : public CanMotor{
         bool setTorque(float torque_setpoint, unsigned long timeout_us) override;
         bool setCurrentPositionAsZero() override;
         bool setCurrentPositionAsOrigin() override;
-        void handleInterrupt(void) override;
 
         //Public member functions exlusive for RMD motors
         bool requestPosition();

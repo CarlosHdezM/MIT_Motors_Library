@@ -87,6 +87,35 @@ void CanMotor::stopAutoMode()
 
 
 
+void CanMotor::handleInterrupt(void)
+{
+    m_last_response_time_ms = millis();
+    uint8_t irq = m_mcp2515.getInterrupts();
+    //Serial.println(irq,BIN);
+    if (irq & MCP2515::CANINTF_MERRF)
+    {
+        Serial.print("\n\n!!!!!ERROR MERF (ERROR IN MESSAGE TRANSMISSION OR RECEPTION)!!!"); Serial.print(m_name); Serial.print("\n\n");
+        cli();
+        m_mcp2515.clearMERR();
+        m_mcp2515.clearInterrupts();
+        sei();
+    }
+    if (irq & MCP2515::CANINTF_ERRIF)
+    {
+        //uint8_t err = m_mcp2515.getErrorFlags();
+        Serial.print("\n\n!!!!!!!ERROR BUFFER FULL!!!!!!"); Serial.print(m_name); Serial.print("\n\n");
+        //m_emptyMCP2515buffer();
+        cli();
+        m_mcp2515.clearRXnOVRFlags();
+        m_mcp2515.clearERRIF();
+        m_mcp2515.clearInterrupts();
+        sei();
+    }
+    m_readMotorResponse();
+    m_is_ready_to_send = true;
+}
+
+
 bool CanMotor::m_sendAndReceiveBlocking(const can_frame & can_msg , unsigned long timeout_us)
 {
     stopAutoMode();
