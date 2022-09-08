@@ -12,5 +12,6 @@ void print_menu()
     Serial.print(INPUT_SET_TORQUE_AND_READ - '0'); Serial.print(") Enviar y leer continuamente \n");
     Serial.print(INPUT_SET_POS_ORIGIN - '0'); Serial.print(") Establecer position actual como Origen\n");
     Serial.print(INPUT_SET_POS_ZERO - '0'); Serial.print(") Establecer position actual como Zero \n");
-
+    Serial.print((byte)(INPUT_AUTO_MODE_ON)); Serial.print(") Iniciar modo automatico \n");
+    Serial.print((byte)(INPUT_AUTO_MODE_OFF)); Serial.print(") Detener modo automatico \n");
 }

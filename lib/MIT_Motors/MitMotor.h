@@ -5,7 +5,6 @@
 #include <SPI.h>
 #include <mcp2515.h>
 
-#define DEBUG_ENABLED 1
 
 class MitMotor : public CanMotor{
     public:
@@ -26,26 +25,26 @@ class MitMotor : public CanMotor{
         static const MotorType AK_10;
         static const MotorType GIM;
 
-        //Public member functions common for all CAN motors:
-        MitMotor(const MotorType & motor_type, const uint8_t _CS, const char * motor_name = "DEFAULT_NAME", SPIClass & spi = SPI, const bool doBegin = true);
+        MitMotor(const MotorType & motor_type, const uint8_t _CS, const uint8_t _INT_PIN, const char * motor_name = "DEFAULT_NAME", SPIClass & spi = SPI, const bool doBegin = true);
+
+        //Public member functions that this class defines (overrides from the base):
         bool turnOn() override;
         bool turnOff() override;
-        bool setCurrentPositionAsZero() override;
         bool setTorque(float torque_setpoint) override;
         bool setTorque(float torque_setpoint, unsigned long timeout_us) override;
-        bool readMotorResponse() override;
-        bool readMotorResponse(unsigned long timeout_us) override;
+        bool setCurrentPositionAsZero() override;
         bool setCurrentPositionAsOrigin() override;
 
-        //Public member functions exclusive for MIT Motors.
 
     private:
         //Private member variables
         const MotorType m_motor_type;
 
+        //Private member functions that this class defines (overrides from the base):
+        bool m_sendTorque(float torque_setpoint) override;
+        bool m_readMotorResponse() override;
 
-        //Private member functions
+        //Private member functions exclusive for MIT Motors.
         unsigned int m_float_to_uint(float x, float x_min, float x_max);
         float m_uint_to_float(unsigned int x_int, float x_min, float x_max, int bits);
-
 };

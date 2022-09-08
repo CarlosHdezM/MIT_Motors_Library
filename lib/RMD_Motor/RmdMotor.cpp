@@ -36,6 +36,7 @@ const RmdMotor::MotorType RmdMotor::RMD_X8_PRO_V3{REDUCTION_6_TO_1, X8_PRO_V3_KT
 const RmdMotor::MotorType RmdMotor::RMD_L5015{REDUCTION_1_TO_1, L5015_KT};
 
 
+
 union torque_msg_tx
 {
     struct
@@ -59,6 +60,7 @@ union torque_msg_tx
         uint8_t b7;
     } bytes;
 };
+
 
 
 union torque_msg_rx
@@ -86,125 +88,17 @@ union torque_msg_rx
 };
 
 
-RmdMotor::RmdMotor(const MotorType & motor_type, const uint8_t _CS,const char * motor_name, SPIClass & spi, const bool doBegin)
-    : CanMotor{_CS, motor_name, spi, doBegin}, m_motor_type(motor_type) 
+
+RmdMotor::RmdMotor(const MotorType & motor_type, const uint8_t _CS, const uint8_t _INT_PIN, const char * motor_name, SPIClass & spi, const bool doBegin)
+    : CanMotor{_CS, _INT_PIN, motor_name, spi, doBegin}, m_motor_type(motor_type)
 {
 }
 
 
-bool RmdMotor::setTorque(float torque_setpoint, unsigned long timeout_us){
-    bool was_message_sent;
-    unsigned long t_ini = micros();
-    while(!(was_message_sent = setTorque(torque_setpoint)) and (micros()-t_ini) < timeout_us)
-    {
-        //Serial.println("Send Retry!");           
-    }
-    return was_message_sent;
-}
 
-
-bool RmdMotor::setTorque(float torque_setpoint)
+bool RmdMotor::turnOn()
 {
-    can_frame can_msg;
-    torque_msg_tx msg_tx;
-    msg_tx.values.torque = (int16_t)(((torque_setpoint)/m_motor_type.KT)*AMPS_TO_RAW);
-    msg_tx.values.torque = constrain(msg_tx.values.torque, CURRENT_RAW_MIN, CURRENT_RAW_MAX);
-    can_msg.can_id  = 0x141;
-    can_msg.can_dlc = 0x08;
-    can_msg.data[0] = SET_TORQUE_COMMAND;
-    can_msg.data[1] = msg_tx.bytes.b1;
-    can_msg.data[2] = msg_tx.bytes.b2;
-    can_msg.data[3] = msg_tx.bytes.b3;
-    can_msg.data[4] = msg_tx.bytes.b4;
-    can_msg.data[5] = msg_tx.bytes.b5;
-    can_msg.data[6] = msg_tx.bytes.b6;
-    can_msg.data[7] = msg_tx.bytes.b7;
-    return (m_mcp2515.sendMessage(&can_msg) == MCP2515::ERROR_OK) ? true : false;
-}
-
-
-
-bool RmdMotor::readMotorResponse(unsigned long timeout_us)
-{
-    bool was_response_received;
-    unsigned long t_ini = micros();
-    while(!(was_response_received = readMotorResponse()) and (micros()-t_ini) < timeout_us)
-    {
-        //Serial.println("Waiting for response!");           
-    }
-    return was_response_received;
-}
-
-
-
-bool RmdMotor::readMotorResponse()
-{
-    torque_msg_rx msg_rx;  
-    if(m_mcp2515.readMessage(&response_msg) != MCP2515::ERROR::ERROR_OK)
-    { 
-        return false;
-    }
-    /// unpack ints from can buffer ///
-    switch (response_msg.data[0])
-    {
-        case SET_TORQUE_COMMAND:
-        case UPDATE_STATUS_COMMAND:
-            msg_rx.bytes.b0 = response_msg.data[0];
-            msg_rx.bytes.b1 = response_msg.data[1];
-            msg_rx.bytes.b2 = response_msg.data[2];
-            msg_rx.bytes.b3 = response_msg.data[3];
-            msg_rx.bytes.b4 = response_msg.data[4];
-            msg_rx.bytes.b5 = response_msg.data[5];
-            msg_rx.bytes.b6 = response_msg.data[6];
-            msg_rx.bytes.b7 = response_msg.data[7];
-            m_temperature = msg_rx.values.temperature;
-            m_torque = msg_rx.values.torque;
-            m_velocity = msg_rx.values.velocity;
-            //encoder(msg_rx.values.pos, values);;
-            break;
-
-        case REQUEST_POS_COMMAND:
-            m_position = (((((response_msg.data[4] << 24) | (response_msg.data[3] << 16) | (response_msg.data[2] << 8) | (response_msg.data[1])))/(m_motor_type.reduction * 100.0))/** RAD*/);
-            break;
-            
-        case SET_ZERO_POS_COMMAND:
-            //m_position = 0;
-            Serial.print("Recibida confirmación de seteo de cero. Motor "); Serial.println(m_name); Serial.println("!!!!NECESARIO REINICIAR ALIMENTACIÓN DEL MOTOR PARA QUE SEA VALIDO EL NUEVO CERO Y NO EXPLOTE ALV!!!");
-            break;
-
-        case TURN_OFF_COMMAND:
-            Serial.print("Recibida confirmación de apagado. Motor: "); Serial.println(m_name);
-            break;
-
-        default:
-            Serial.print("Se recibió una respuesta, pero no se reconoció el comando. Motor: "); Serial.println(m_name);
-            return false;
-            break;
-    }
-    return true;    
-}
-
-
-
-bool RmdMotor::requestPosition()
-{
-    can_frame can_msg;
-    can_msg.can_id  = 0x141;
-    can_msg.can_dlc = 0x08;
-    can_msg.data[0] = REQUEST_POS_COMMAND;
-    can_msg.data[1] = 0x00;
-    can_msg.data[2] = 0x00;
-    can_msg.data[3] = 0x00;
-    can_msg.data[4] = 0x00;
-    can_msg.data[5] = 0x00;
-    can_msg.data[6] = 0x00;
-    can_msg.data[7] = 0x00;
-    return (m_mcp2515.sendMessage(&can_msg) == MCP2515::ERROR_OK) ? true : false;
-}
-
-
-
-bool RmdMotor::turnOn(){
+    stopAutoMode();
     can_frame can_msg;
     can_msg.can_id  = 0x141;
     can_msg.can_dlc = 0x08;
@@ -221,14 +115,13 @@ bool RmdMotor::turnOn(){
 
     can_msg.data[0] = REQUEST_POS_COMMAND;
     return m_sendAndReceiveBlocking(can_msg, 1000000);
-
-
 }
 
 
 
 bool RmdMotor::turnOff() 
 {
+    stopAutoMode();
     can_frame can_msg;
     can_msg.can_id  = 0x141;
     can_msg.can_dlc = 0x08;
@@ -248,8 +141,77 @@ bool RmdMotor::turnOff()
 
 
 
+//Refactor this function.
+bool RmdMotor::setTorque(float torque_setpoint )
+{
+    if(m_is_auto_mode_running)
+    {
+        if (m_is_ready_to_send)
+        {
+            m_is_ready_to_send = false;
+            if (m_curr_state == 0)
+            {
+                m_curr_state = 1;
+                return m_sendTorque(torque_setpoint);
+            }
+            else
+            {
+                m_curr_state = 0;
+                return m_requestPosition();
+            }
+        }
+        else if ((millis() - m_last_response_time_ms) < MILLIS_LIMIT_UNTIL_RETRY) //In auto mode, test if we received response 
+        {
+            //Serial.println("All Ok, auto mode running normally");
+            return true; //Everything OK. Motor doesn't need communication "recovery"
+        }
+        else
+        {
+            if ((millis() - m_last_retry_time_ms) > MILLIS_LIMIT_UNTIL_RETRY)
+            {
+                m_last_retry_time_ms = millis();
+                //Serial.print("\t Millis: "); Serial.print(millis()); Serial.print("\tLast message"); Serial.print(m_last_response_time_ms); Serial.print("\tRetrying to recover "); Serial.println(m_name); 
+                cli();
+                m_emptyMCP2515buffer();
+                sei();
+                if (m_curr_state == 0)
+                {
+                    m_curr_state = 1;
+                    m_sendTorque(torque_setpoint);
+                }
+                else
+                {
+                    m_curr_state = 0;
+                    m_requestPosition();
+                }
+            }
+            return false;
+        }
+    }
+    return m_sendTorque(torque_setpoint);
+}
+
+
+
+bool RmdMotor::setTorque(float torque_setpoint, unsigned long timeout_us){
+    if (m_is_auto_mode_running) 
+    {
+        return setTorque(torque_setpoint);
+    }
+    bool was_message_sent;
+    unsigned long t_ini = micros();
+    while(!(was_message_sent = setTorque(torque_setpoint)) and (micros()-t_ini) < timeout_us)
+    {
+        //Serial.println("Send Retry!");           
+    }
+    return was_message_sent;
+}
+
+
+
 bool RmdMotor::setCurrentPositionAsZero()
 {
+    stopAutoMode();
     can_frame can_msg;
     can_msg.can_id  = 0x141;
     can_msg.can_dlc = 0x08;
@@ -293,4 +255,107 @@ bool RmdMotor::setCurrentPositionAsOrigin(){
 
 
 
+bool RmdMotor::requestPosition()
+{
+    return (m_is_auto_mode_running ? true : m_requestPosition());
+}
 
+
+
+bool RmdMotor::m_sendTorque(float torque_setpoint)
+{
+    
+    can_frame can_msg;
+    torque_msg_tx msg_tx;
+    msg_tx.values.torque = (int16_t)(((torque_setpoint)/m_motor_type.KT)*AMPS_TO_RAW);
+    msg_tx.values.torque = constrain(msg_tx.values.torque, CURRENT_RAW_MIN, CURRENT_RAW_MAX);
+    can_msg.can_id  = 0x141;
+    can_msg.can_dlc = 0x08;
+    can_msg.data[0] = SET_TORQUE_COMMAND;
+    can_msg.data[1] = msg_tx.bytes.b1;
+    can_msg.data[2] = msg_tx.bytes.b2;
+    can_msg.data[3] = msg_tx.bytes.b3;
+    can_msg.data[4] = msg_tx.bytes.b4;
+    can_msg.data[5] = msg_tx.bytes.b5;
+    can_msg.data[6] = msg_tx.bytes.b6;
+    can_msg.data[7] = msg_tx.bytes.b7;
+    //m_mcp2515.clearInterrupts();
+    cli();
+    bool result = (m_mcp2515.sendMessage(&can_msg) == MCP2515::ERROR_OK);
+    sei();
+    return result;
+}
+
+
+
+bool RmdMotor::m_readMotorResponse()
+{
+torque_msg_rx msg_rx;
+    cli();
+    if(m_mcp2515.readMessage(&response_msg) != MCP2515::ERROR::ERROR_OK)
+    { 
+        sei();
+        return false;
+    }
+    sei();
+    /// unpack ints from can buffer ///
+    switch (response_msg.data[0])
+    {
+        case SET_TORQUE_COMMAND:
+        case UPDATE_STATUS_COMMAND:
+            msg_rx.bytes.b0 = response_msg.data[0];
+            msg_rx.bytes.b1 = response_msg.data[1];
+            msg_rx.bytes.b2 = response_msg.data[2];
+            msg_rx.bytes.b3 = response_msg.data[3];
+            msg_rx.bytes.b4 = response_msg.data[4];
+            msg_rx.bytes.b5 = response_msg.data[5];
+            msg_rx.bytes.b6 = response_msg.data[6];
+            msg_rx.bytes.b7 = response_msg.data[7];
+            m_temperature = msg_rx.values.temperature;
+            m_torque = msg_rx.values.torque;
+            m_velocity = msg_rx.values.velocity;
+            //encoder(msg_rx.values.pos, values);;
+            break;
+
+        case REQUEST_POS_COMMAND:
+            m_position = (((((response_msg.data[4] << 24) | (response_msg.data[3] << 16) | (response_msg.data[2] << 8) | (response_msg.data[1])))/(m_motor_type.reduction * 100.0))/** RAD*/);
+            break;
+            
+        case SET_ZERO_POS_COMMAND:
+            //m_position = 0;
+            Serial.print("Recibida confirmación de seteo de cero. Motor "); Serial.println(m_name); Serial.println("!!!!NECESARIO REINICIAR ALIMENTACIÓN DEL MOTOR PARA QUE SEA VALIDO EL NUEVO CERO Y NO EXPLOTE ALV!!!");
+            break;
+
+        case TURN_OFF_COMMAND:
+            Serial.print("Recibida confirmación de apagado. Motor: "); Serial.println(m_name);
+            break;
+
+        default:
+            Serial.print("Se recibió una respuesta, pero no se reconoció el comando. Motor: "); Serial.println(m_name);
+            return false;
+            break;
+    }
+    return true;   
+}
+
+
+
+bool RmdMotor::m_requestPosition()
+{
+    can_frame can_msg;
+    can_msg.can_id  = 0x141;
+    can_msg.can_dlc = 0x08;
+    can_msg.data[0] = REQUEST_POS_COMMAND;
+    can_msg.data[1] = 0x00;
+    can_msg.data[2] = 0x00;
+    can_msg.data[3] = 0x00;
+    can_msg.data[4] = 0x00;
+    can_msg.data[5] = 0x00;
+    can_msg.data[6] = 0x00;
+    can_msg.data[7] = 0x00;
+    //m_mcp2515.clearInterrupts();
+    cli();
+    bool result = m_mcp2515.sendMessage(&can_msg) == MCP2515::ERROR_OK;
+    sei();
+    return result;
+}

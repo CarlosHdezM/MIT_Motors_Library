@@ -6,6 +6,7 @@
         "istream": "cpp",
         "ostream": "cpp",
         "system_error": "cpp",
-        "typeinfo": "cpp"
+        "typeinfo": "cpp",
+        "array": "cpp"
     }
 }

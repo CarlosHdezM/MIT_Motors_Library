@@ -2,31 +2,59 @@
 #include "machine_state.h"
 #include "MitMotor.h"
 #include "RmdMotor.h"
+#include "array"
+#include <algorithm>
  
-#define CS_1 2
-#define BOTON 1
-#define MOTOR_RMD 1
-#if MOTOR_RMD
-    RmdMotor motor1(RmdMotor::RMD_L5015, CS_1, "RMD_L5015");
 
-#else
-    MitMotor motor1(MitMotor::GIM, CS_1, "GIM 1");
-#endif
+// const uint8_t CS_PINS [NUM_MOTORS] =        {2 , 3 };
+// const uint8_t INTERRUPT_PINS[NUM_MOTORS] =  {27, 28};
+#define CS_1 2
+#define CS_2 3
+#define INT_1 27
+#define INT_2 28
+
+#define BOTON 1
+#define AUX_PIN_1 9
+
 
 MachineStates current_state = MachineStates::PRINT_MENU;
+
+
+CanMotor * motors[] = {
+    new MitMotor(MitMotor::AK_10, CS_1, INT_1, "AK_10 1"),
+    new RmdMotor(RmdMotor::RMD_X6, CS_2, INT_2, "RMD X6 1" )
+};
+constexpr size_t NUM_MOTORS = sizeof(motors) / sizeof(motors[0]);
+
+void(*interrupt_handlers[NUM_MOTORS])() = {
+    [](){motors[0]->handleInterrupt();},
+    [](){motors[1]->handleInterrupt();}
+};
+
 
 void setup()
 {
     Serial.begin(115200);
+    pinMode(BOTON, INPUT_PULLUP);
+    pinMode(AUX_PIN_1, OUTPUT);
+    digitalWrite(AUX_PIN_1,LOW);
+    delay(500);
 
-    pinMode(BOTON, INPUT_PULLUP);   
-
-    while(!motor1.initialize()){
-        Serial.print("Retrying to connect to the MCP2515 of motor "); Serial.println(motor1.name());
-        delay(100);
+    for (auto & motor : motors)
+    {
+        while(!motor->initialize())
+        {
+            Serial.print("Retrying to initialize "); Serial.print(motor->name()); Serial.print(" MCP2515");
+        }
+        while(!motor->turnOn())
+        {
+            Serial.print("Retrying to turn on "); Serial.println(motor->name());
+        }
     }
-    Serial.println("Initialized succesfully");
+    Serial.println("All motors initialized succesfully");
+
 }
+
 
 void loop ()
 {
@@ -88,6 +116,14 @@ void loop ()
                     current_state = SET_POS_ZERO; 
                     break;
 
+                case INPUT_AUTO_MODE_ON:
+                    current_state = START_AUTO_MODE;
+                    break;
+
+                case INPUT_AUTO_MODE_OFF:
+                    current_state = STOP_AUTO_MODE;
+                    break;
+
                 default:
                     Serial.println("\nInvalid Option");
                     current_state = PRINT_MENU;
@@ -97,113 +133,153 @@ void loop ()
 
         case ENABLE_MOTORS:
             Serial.println("\nEnabling Motor");
-            if (motor1.turnOn())
+            for (uint8_t i = 0; i < NUM_MOTORS; i++)
             {
-                Serial.print("Position: "); Serial.print(motor1.position(), 4);
-                Serial.print("\tTorque: "); Serial.print(motor1.torque(), 4);
-                Serial.print("\tVelocity: "); Serial.println(motor1.velocity(), 4);
-                Serial.println();
-            }
-            else Serial.println("No response");
+                if (motors[i]->turnOn() ) {Serial.print("Turned on "); Serial.println(motors[i]->name());}
+                else {Serial.print("Failed turning on "); Serial.println(motors[i]->name());}
+            }            
             current_state = MachineStates::PRINT_MENU;
             break;
 
         case DISABLE_MOTORS:
             Serial.println("\nDisabling Motor");   
-            if (motor1.turnOff())
+            for (uint8_t i = 0; i < NUM_MOTORS; i++)
             {
-                Serial.print("Position: "); Serial.print(motor1.position(), 4);
-                Serial.print("\tTorque: "); Serial.print(motor1.torque(), 4);
-                Serial.print("\tVelocity: "); Serial.println(motor1.velocity(), 4);
-                Serial.println();
-            }
-            else Serial.println("No response");  
+                if (motors[i]->turnOff() ) {Serial.print("Turned off "); Serial.println(motors[i]->name());}
+                else {Serial.print("Failed turning off "); Serial.println(motors[i]->name());}
+            }   
             current_state = MachineStates::PRINT_MENU;
             break;
 
         case SET_TORQUE_ZERO:
             Serial.print("\nEstableciendo el torque a 0\n");
-            if (motor1.setTorque(0)) Serial.println("Current 0 setpoint sent");
-            else Serial.println("Failed sending the message");
+            for (uint8_t i = 0; i < NUM_MOTORS; i++)
+            {
+                if (motors[i]->setTorque(0)) {Serial.print("Current 0 setpoint sent to "); Serial.println(motors[i]->name());}
+                else {Serial.print("Failed setting torque cero to "); Serial.println(motors[i]->name());}
+            }            
             current_state = MachineStates::PRINT_MENU;
             break;
 
         case READ_MOTOR_RESPONSE:
-            Serial.print("\nLeyendo la respuesta del motor\n");
-            if (motor1.readMotorResponse())
-            {
-                Serial.print("Position: "); Serial.print(motor1.position(), 4);
-                Serial.print("\tTorque: "); Serial.print(motor1.torque(), 4);
-                Serial.print("\tVelocity: "); Serial.println(motor1.velocity(), 4);
+            for (uint8_t i = 0; i < NUM_MOTORS; i++)
+            {       
+                if (motors[i]->readMotorResponse())
+                {
+                    Serial.print("\nL Respuesta motores\n");
+                    Serial.print("Position: "); Serial.print(motors[i]->position(), 4);
+                    Serial.print("\tTorque: "); Serial.print(motors[i]->torque(), 4);
+                    Serial.print("\tVelocity: "); Serial.println(motors[i]->velocity(), 4);
+                }
+                else {Serial.print("No response pending in "); Serial.print(motors[i]->name()); Serial.print(" MCP2515 Buffer");}
             }
-            else Serial.println("No response");
+
             current_state = MachineStates::PRINT_MENU;
             break;
 
         case REQUEST_POSITION:
-            Serial.print("\nSolicitando la posicion actual del motor\n");
-            #if MOTOR_RMD
-                if (motor1.requestPosition()) Serial.println("Sent CAN message to request position");
-                else Serial.println("Failed sending the message");
-            #endif
+            Serial.println("Muchas gracias por seleccionar esta opcion, pero este caso no se usa para nada ahorita.");
             current_state = MachineStates::PRINT_MENU;
             break;
 
         case SET_TORQUE:
-            Serial.print("\nSe ha establecido un valor torque (0.3)\n");
-            if (motor1.setTorque(0.3)) Serial.println("Current 0.3 setpoint sent");
-            else Serial.println("Failed sending the message");
+            Serial.println("Muchas gracias por seleccionar esta opcion, pero este caso no se usa para nada ahorita x2.");
             current_state = MachineStates::PRINT_MENU;
             break;
 
         case SET_TORQUE_AND_READ:
+        {
             Serial.println("\nVamos a escribir y leer continuamente");
+            elapsedMicros wait_to_print;
+            elapsedMicros wait_to_loop;
+            const uint16_t delay_loop_us = 150;
+            const uint16_t print_every_us = 5000;
             while (digitalRead(BOTON) == HIGH)
             {
-             if(!motor1.setTorque(0.3,1000)) Serial.println("Message NOT Sent");
-            if(!motor1.readMotorResponse(2000)) Serial.println("Message NOT Received");
-            if(!motor1.requestPosition()) Serial.println("Message NOT Sent");
-            if(!motor1.readMotorResponse(2000)) Serial.println("Message NOT Received");
-            {
-                Serial.print("Position: "); Serial.print(motor1.position(), 4);
-                Serial.print("\tTorque: "); Serial.print(motor1.torque(), 4);
-                Serial.print("\tVelocity: "); Serial.println(motor1.velocity(), 4);
-                Serial.println();
-
+                while (wait_to_loop < delay_loop_us){}
+                wait_to_loop = 0;
+                
+                for (uint8_t i = 0; i < NUM_MOTORS; i++)
+                {  
+                    if(!motors[i]->setTorque(0)) { /*Serial.print("No se pudo enviar torque 0 a: "); Serial.println(motors[i]->name());*/}
+                }
+                
+                if(wait_to_print > print_every_us)
+                {
+                    wait_to_print = 0;
+                    for (uint8_t i = 0; i < NUM_MOTORS; i++)
+                    {
+                        Serial.print(motors[i]->name());
+                        Serial.print(":\tPosition: "); Serial.print(motors[i]->position(), 4);
+                        Serial.print("\tTorque: "); Serial.print(motors[i]->torque(), 4);
+                        Serial.print("\tVelocity: "); Serial.println(motors[i]->velocity(), 4);                  
+                    }
+                    Serial.println();
+                }
+                digitalWrite(AUX_PIN_1,!digitalRead(AUX_PIN_1));
             }
-            }
-            if(!motor1.setTorque(0.3,1000)) Serial.println("Message NOT Sent");
-            if(!motor1.readMotorResponse(2000)) Serial.println("Message NOT Received");
             current_state = MachineStates::PRINT_MENU;
-            break;
+        }break;
 
         case SET_POS_ORIGIN:
-            Serial.print("\nSe ha establecido la posicion actual como el origen\n");
-            if (motor1.setCurrentPositionAsOrigin()){
-                Serial.print("Position: "); Serial.print(motor1.position(), 4);
-                Serial.print("\tTorque: "); Serial.print(motor1.torque(), 4);
-                Serial.print("\tVelocity: "); Serial.println(motor1.velocity(), 4);
-            }
-            else 
+            Serial.print("\nEstableciendo posicion actual como el origen\n");
+            for (uint8_t i = 0; i < NUM_MOTORS; i++)
             {
-                Serial.println("Failed setting current position as origin");
+                Serial.print(motors[i]->name());
+                if (motors[i]->setCurrentPositionAsOrigin()){
+                    Serial.print(":\tPosition: "); Serial.print(motors[i]->position(), 4);
+                    Serial.print("\tTorque: "); Serial.print(motors[i]->torque(), 4);
+                    Serial.print("\tVelocity: "); Serial.println(motors[i]->velocity(), 4);
                 }
+                else 
+                {
+                    Serial.println(":\tFailed setting current position as origin");
+                }
+            }
             current_state = MachineStates::PRINT_MENU;
             break;
 
         case SET_POS_ZERO:
         {
             Serial.print("\nSe ha establecido la posicion actual como zero del motor\n");
-            if (motor1.setCurrentPositionAsZero())
+            for (uint8_t i = 0; i < NUM_MOTORS; i++)
             {
-                Serial.print("Position: "); Serial.print(motor1.position(), 4);
-                Serial.print("\tTorque: "); Serial.print(motor1.torque(), 4);
-                Serial.print("\tVelocity: "); Serial.println(motor1.velocity(), 4);
-                Serial.println();
+                Serial.print(motors[i]->name());
+                if (motors[i]->setCurrentPositionAsZero())
+                {
+                    Serial.print("Position: "); Serial.print(motors[i]->position(), 4);
+                    Serial.print("\tTorque: "); Serial.print(motors[i]->torque(), 4);
+                    Serial.print("\tVelocity: "); Serial.println(motors[i]->velocity(), 4);
+                }
+                else 
+                {
+                    Serial.println(":\tFailed setting current position as origin");
+                }
             }
-            else Serial.println("No response");
             current_state = PRINT_MENU;
         } break;
+
+
+        case START_AUTO_MODE:
+        {
+            for (uint8_t i = 0; i < NUM_MOTORS; i++)
+            {
+                Serial.print("Starting auto mode for:"); Serial.println(motors[i]->name());
+                motors[i]->startAutoMode(interrupt_handlers[i]);
+            }
+            current_state = PRINT_MENU;
+        }break;
+
+
+        case STOP_AUTO_MODE:
+            for (uint8_t i = 0; i < NUM_MOTORS; i++)
+            {
+                Serial.print("Stopping auto mode for:"); Serial.println(motors[i]->name());
+                motors[i]->stopAutoMode();
+            }                      
+            current_state = PRINT_MENU;
+            break;
+
 
         default:
             current_state = PRINT_MENU;
