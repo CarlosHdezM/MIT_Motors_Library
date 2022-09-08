@@ -64,6 +64,7 @@ bool CanMotor::readMotorResponse(unsigned long timeout_us)
 
 
 void CanMotor::startAutoMode(void (*ISR_callback)(void)){
+    //Serial.print(m_name); Serial.println("Started auto mode"); 
     m_is_auto_mode_running = true;
     m_is_ready_to_send = true;
     m_emptyMCP2515buffer();
@@ -73,7 +74,7 @@ void CanMotor::startAutoMode(void (*ISR_callback)(void)){
     m_last_response_time_ms = millis();
     return;
 }
- 
+
 
 
 void CanMotor::stopAutoMode()
@@ -114,6 +115,7 @@ void CanMotor::handleInterrupt(void)
     m_readMotorResponse();
     m_is_ready_to_send = true;
 }
+
 
 
 bool CanMotor::m_sendAndReceiveBlocking(const can_frame & can_msg , unsigned long timeout_us)

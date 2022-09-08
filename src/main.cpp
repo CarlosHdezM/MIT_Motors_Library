@@ -24,13 +24,12 @@ CanMotor * motors[] = {
     new MitMotor(MitMotor::AK_10, CS_1, INT_1, "AK_10 1"),
     new RmdMotor(RmdMotor::RMD_X6, CS_2, INT_2, "RMD X6 1" )
 };
-const size_t NUM_MOTORS = sizeof(motors) / sizeof(motors[0]);
+constexpr size_t NUM_MOTORS = sizeof(motors) / sizeof(motors[0]);
 
-
-// std::array<CanMotor *, NUM_MOTORS> my_motors_std = {
-//     new MitMotor(MitMotor::AK_10, CS_1, INT_1, "AK_10 1"),
-//     new RmdMotor(RmdMotor::RMD_X6, CS_2, INT_2, "RMD X6 1" )
-// };
+void(*interrupt_handlers[NUM_MOTORS])() = {
+    [](){motors[0]->handleInterrupt();},
+    [](){motors[1]->handleInterrupt();}
+};
 
 
 void setup()
@@ -40,11 +39,6 @@ void setup()
     pinMode(AUX_PIN_1, OUTPUT);
     digitalWrite(AUX_PIN_1,LOW);
     delay(500);
-
-    Serial.println("Sizes:");
-    Serial.println(sizeof(uint8_t));
-    Serial.println(sizeof(MitMotor));
-    Serial.println(sizeof(RmdMotor));
 
     for (auto & motor : motors)
     {
@@ -198,7 +192,7 @@ void loop ()
             Serial.println("\nVamos a escribir y leer continuamente");
             elapsedMicros wait_to_print;
             elapsedMicros wait_to_loop;
-            const uint16_t delay_loop_us = 0;
+            const uint16_t delay_loop_us = 150;
             const uint16_t print_every_us = 5000;
             while (digitalRead(BOTON) == HIGH)
             {
@@ -265,27 +259,27 @@ void loop ()
             current_state = PRINT_MENU;
         } break;
 
+
         case START_AUTO_MODE:
-            Serial.print("Starting auto mode for:"); Serial.println(motors[0]->name());
-            motors[0]->startAutoMode([](){motors[0]->handleInterrupt();});
-            Serial.print("Starting auto mode for:"); Serial.println(motors[1]->name());
-            motors[1]->startAutoMode([](){motors[1]->handleInterrupt();});
-
-            //void(*p[1])() = {motors[0]->handleInterrupt};
-            //p[0] = motors[0]->handleInterrupt;
-
-            //auto hi = motors[0]->handleInterrupt;
-
+        {
+            for (uint8_t i = 0; i < NUM_MOTORS; i++)
+            {
+                Serial.print("Starting auto mode for:"); Serial.println(motors[i]->name());
+                motors[i]->startAutoMode(interrupt_handlers[i]);
+            }
             current_state = PRINT_MENU;
-            break;
+        }break;
+
 
         case STOP_AUTO_MODE:
-            //Serial.print("Disabling auto mode: "); Serial.println(motor1.name());
-            //Serial.print("Disabling auto mode: "); Serial.println(motor2.name());
-            //motor1.stopAutoMode();
-            //motor2.stopAutoMode();                        
+            for (uint8_t i = 0; i < NUM_MOTORS; i++)
+            {
+                Serial.print("Stopping auto mode for:"); Serial.println(motors[i]->name());
+                motors[i]->stopAutoMode();
+            }                      
             current_state = PRINT_MENU;
             break;
+
 
         default:
             current_state = PRINT_MENU;
