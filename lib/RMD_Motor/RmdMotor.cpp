@@ -287,30 +287,7 @@ void RmdMotor::handleInterrupt(void)
 
 bool RmdMotor::requestPosition()
 {
-    //return (m_is_auto_mode_running ? true : m_requestPosition());
-    if(m_is_auto_mode_running)
-    {
-        if ((millis() - m_last_response_time_ms) < MILLIS_LIMIT_UNTIL_RETRY) //In auto mode, test if we received response 
-        {
-            //Serial.println("All Ok, auto mode running normally");
-            return true; //Everything OK. Motor doesn't need communication "recovery"
-        }
-        else
-        {
-            //Serial.print("Retrying to recover requestPosition "); Serial.println(m_name);
-            cli();
-            m_emptyMCP2515buffer();
-            // m_mcp2515.clearRXnOVRFlags();
-            // m_mcp2515.clearERRIF();
-            // m_mcp2515.clearMERR();
-            //m_mcp2515.clearInterrupts();
-            sei();
-            //m_last_response_time_ms = millis();
-            m_requestPosition();
-            return false;
-        }
-    }
-    return m_requestPosition();
+    return (m_is_auto_mode_running ? true : m_requestPosition());
 }
 
 
