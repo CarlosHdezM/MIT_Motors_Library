@@ -46,6 +46,7 @@ class CanMotor{
         bool m_is_auto_mode_running;
         unsigned long m_last_response_time_ms;
         bool m_is_ready_to_send;
+        unsigned long m_last_retry_time_ms;
         MCP2515 m_mcp2515;
         can_frame response_msg;
         

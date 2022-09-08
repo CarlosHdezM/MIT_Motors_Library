@@ -151,13 +151,11 @@ bool RmdMotor::setTorque(float torque_setpoint )
             m_is_ready_to_send = false;
             if (m_curr_state == 0)
             {
-                //Serial.println("Sending torque");
                 m_curr_state = 1;
                 return m_sendTorque(torque_setpoint);
             }
             else
             {
-                //Serial.println("Requesting position");
                 m_curr_state = 0;
                 return m_requestPosition();
             }
@@ -169,26 +167,23 @@ bool RmdMotor::setTorque(float torque_setpoint )
         }
         else
         {
-            //Serial.print("\t Millis: "); Serial.print(millis()); Serial.print("\tLast message"); Serial.print(m_last_response_time_ms); Serial.print("\tRetrying to recover "); Serial.println(m_name); 
-            cli();
-            m_emptyMCP2515buffer();
-            // m_mcp2515.clearRXnOVRFlags();
-            // m_mcp2515.clearERRIF();
-            // m_mcp2515.clearMERR();
-            //m_mcp2515.clearInterrupts();
-            sei();
-            //m_last_response_time_ms = millis();
-            if (m_curr_state == 0)
+            if ((millis() - m_last_retry_time_ms) > MILLIS_LIMIT_UNTIL_RETRY)
             {
-                //Serial.println("Sending torque");
-                m_curr_state = 1;
-                m_sendTorque(torque_setpoint);
-            }
-            else
-            {
-                //Serial.println("Requesting position");
-                m_curr_state = 0;
-                m_requestPosition();
+                m_last_retry_time_ms = millis();
+                //Serial.print("\t Millis: "); Serial.print(millis()); Serial.print("\tLast message"); Serial.print(m_last_response_time_ms); Serial.print("\tRetrying to recover "); Serial.println(m_name); 
+                cli();
+                m_emptyMCP2515buffer();
+                sei();
+                if (m_curr_state == 0)
+                {
+                    m_curr_state = 1;
+                    m_sendTorque(torque_setpoint);
+                }
+                else
+                {
+                    m_curr_state = 0;
+                    m_requestPosition();
+                }
             }
             return false;
         }

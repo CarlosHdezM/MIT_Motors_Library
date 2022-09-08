@@ -194,7 +194,7 @@ void loop ()
             Serial.println("\nVamos a escribir y leer continuamente");
             elapsedMicros wait_to_print;
             elapsedMicros wait_to_loop;
-            const uint16_t delay_loop_us = 150;
+            const uint16_t delay_loop_us = 0;
             const uint16_t print_every_us = 5000;
             while (digitalRead(BOTON) == HIGH)
             {
@@ -203,7 +203,7 @@ void loop ()
                 
                 for (uint8_t i = 0; i < NUM_MOTORS; i++)
                 {  
-                    if(!motors[i]->setTorque(0)) { Serial.print("No se pudo enviar torque 0 a: "); Serial.println(motors[i]->name());}
+                    if(!motors[i]->setTorque(0)) { /*Serial.print("No se pudo enviar torque 0 a: "); Serial.println(motors[i]->name());*/}
                 }
                 
                 if(wait_to_print > print_every_us)

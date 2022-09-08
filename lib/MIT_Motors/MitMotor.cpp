@@ -82,15 +82,14 @@ bool MitMotor::setTorque(float torque_setpoint )
         else
         {
             //Serial.print("\t Millis: "); Serial.print(millis()); Serial.print("\tLast message"); Serial.print(m_last_response_time_ms); Serial.print("\tRetrying to recover "); Serial.println(m_name); 
-            cli();
-            m_emptyMCP2515buffer();
-            // m_mcp2515.clearRXnOVRFlags();
-            // m_mcp2515.clearERRIF();
-            // m_mcp2515.clearMERR();
-            //m_mcp2515.clearInterrupts();
-            sei();
-            //m_last_response_time_ms = millis();
-            m_sendTorque(torque_setpoint);
+            if ((millis() - m_last_retry_time_ms) > MILLIS_LIMIT_UNTIL_RETRY)
+            {
+                m_last_retry_time_ms = millis();
+                cli();
+                m_emptyMCP2515buffer();
+                sei();
+                m_sendTorque(torque_setpoint);
+            }
             return false;
         }
     }
