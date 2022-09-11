@@ -21,7 +21,7 @@ MachineStates current_state = MachineStates::PRINT_MENU;
 
 
 CanMotor * motors[] = {
-    new MitMotor(MitMotor::AK_10, CS_1, INT_1, "AK_10 1"),
+    new MitMotor(MitMotor::AK_10, CS_1, INT_1, "AK 10 1"),
     new RmdMotor(RmdMotor::RMD_X6, CS_2, INT_2, "RMD X6 1" )
 };
 constexpr size_t NUM_MOTORS = sizeof(motors) / sizeof(motors[0]);
