@@ -6,6 +6,36 @@
 #include <algorithm>
  
 
+#define FC 35
+#define KD 0.1f
+#define KP 1.0f
+float P_REF = 0.0;
+
+// Kalman 1
+float T = 0.003;
+float R11 = 0.001;
+float R22 = 0.11;
+float Q11 = 0.001;
+float Q12 = 0.0001;
+float Q21 = 0.0001;
+float Q22 = 1;
+float P11 = 10;
+float P12 = 0;
+float P21 = 0;
+float P22 = 0.01;
+float pjj = 0;
+float posk = 0;
+float delta = 1;
+float velk = 0;
+float k11;
+float k12;
+float k21;
+float k22;
+
+float theta = 0;
+float vel_stim = 0;
+float tau = 0;
+
 // const uint8_t CS_PINS [NUM_MOTORS] =        {2 , 3 };
 // const uint8_t INTERRUPT_PINS[NUM_MOTORS] =  {27, 28};
 #define CS_1 2
@@ -22,15 +52,18 @@ MachineStates current_state = MachineStates::PRINT_MENU;
 
 CanMotor * motors[] = {
     new MitMotor(MitMotor::AK_10, CS_1, INT_1, "AK 10 1"),
-    new RmdMotor(RmdMotor::RMD_X6, CS_2, INT_2, "RMD X6 1" )
+    //new RmdMotor(RmdMotor::RMD_X6, CS_2, INT_2, "RMD X6 1" )
 };
 constexpr size_t NUM_MOTORS = sizeof(motors) / sizeof(motors[0]);
 
+
 void(*interrupt_handlers[NUM_MOTORS])() = {
     [](){motors[0]->handleInterrupt();},
-    [](){motors[1]->handleInterrupt();}
+    //[](){motors[1]->handleInterrupt();}
 };
 
+
+IntervalTimer myTimer;
 
 void setup()
 {
@@ -55,6 +88,52 @@ void setup()
 
 }
 
+
+void controlMotors()
+{
+    // Kalman 1
+    posk = posk + T * velk;
+    velk = velk;
+    P11 = P11 + P12 * T + P21 * T + P22 * T * T + Q11;
+    P12 = P12 + P22 * T + Q12;
+    P21 = P21 + P22 * T + Q21;
+    P22 = P22 + Q22;
+    delta = (P11 + R11) * (P22 + R22) - P21 * P12;
+
+    k11 = P11 / (P11 + R11);
+    k22 = P21 / (P11 + R11);
+
+    velk = velk + k22 * (motors[0]->position() - posk);
+    posk = posk + k11 * (motors[0]->position() - posk);
+
+    // velk = velk + k22 * (0 - posk);
+    // posk = posk + k11 * (0 - posk);
+
+    P11 = (1 - k11) * P11;
+    P12 = (1 - k11) * P12;
+    P21 = -k22 * P11 + P21;
+    P22 = -k22 * P12 + P22;
+    pjj = (P21 + P12) / 2;
+    P21 = pjj;
+    P12 = pjj;
+    tau = -0.5 * ((posk) - 0.0) - 0.3 * velk;
+    if (!motors[0]->setTorque(tau,1000))
+        Serial.println("Message NOT Sent");
+    if(!motors[0]->readMotorResponse(2000)) Serial.println("Message NOT Received");
+    // if(!motors[0]->requestPosition()) Serial.println("Message NOT Sent");
+    //if (!motors[0]->readMotorResponse(2000))
+    //Serial.println("Message NOT Received");
+    // Serial.print("Position: ");
+    // Serial.print((motors[0]->position()), 4);
+    // Serial.print("\tTorque: ");
+    // Serial.print(motors[0]->torque(), 4);
+    // Serial.print("\tTorque calc: ");
+    // Serial.print(tau, 4);
+    // Serial.print("\tVelocity: ");
+    // Serial.println(motors[0]->velocity(), 4);
+    // Serial.println();
+    digitalWrite(AUX_PIN_1,!digitalRead(AUX_PIN_1));
+}
 
 void loop ()
 {
@@ -189,36 +268,28 @@ void loop ()
 
         case SET_TORQUE_AND_READ:
         {
-            Serial.println("\nVamos a escribir y leer continuamente");
-            elapsedMicros wait_to_print;
-            elapsedMicros wait_to_loop;
-            const uint16_t delay_loop_us = 150;
-            const uint16_t print_every_us = 5000;
-            while (digitalRead(BOTON) == HIGH)
-            {
-                while (wait_to_loop < delay_loop_us){}
-                wait_to_loop = 0;
-                
-                for (uint8_t i = 0; i < NUM_MOTORS; i++)
-                {  
-                    if(!motors[i]->setTorque(0)) { /*Serial.print("No se pudo enviar torque 0 a: "); Serial.println(motors[i]->name());*/}
-                }
-                
-                if(wait_to_print > print_every_us)
-                {
-                    wait_to_print = 0;
-                    for (uint8_t i = 0; i < NUM_MOTORS; i++)
-                    {
-                        Serial.print(motors[i]->name());
-                        Serial.print(":\tPosition: "); Serial.print(motors[i]->position(), 4);
-                        Serial.print("\tTorque: "); Serial.print(motors[i]->torque(), 4);
-                        Serial.print("\tVelocity: "); Serial.println(motors[i]->velocity(), 4);                  
-                    }
-                    Serial.println();
-                }
-                digitalWrite(AUX_PIN_1,!digitalRead(AUX_PIN_1));
-            }
-            current_state = MachineStates::PRINT_MENU;
+        // for (uint8_t i = 0; i < NUM_MOTORS; i++)
+        // {
+        //     Serial.print("Starting auto mode for:"); Serial.println(motors[i]->name());
+        //     motors[i]->startAutoMode(interrupt_handlers[i]);
+        // }
+        Serial.println("\nVamos a escribir y leer continuamente");
+        myTimer.begin(controlMotors,200);
+        myTimer.priority(32);
+        theta = -motors[0]->position();
+        while (digitalRead(BOTON) == HIGH)
+        { 
+            //Moved to the interrupt
+        }
+        myTimer.end();
+        for (uint8_t i = 0; i < NUM_MOTORS; i++)
+        {
+            Serial.print("Disabling auto mode for:"); Serial.println(motors[i]->name());
+            motors[i]->stopAutoMode();
+            while (!motors[i]->setTorque(0, 1000)){}
+            while (!motors[i]->readMotorResponse(2000)){}
+        }
+        current_state = MachineStates::PRINT_MENU; 
         }break;
 
         case SET_POS_ORIGIN:
