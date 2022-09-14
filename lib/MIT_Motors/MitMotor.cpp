@@ -66,34 +66,48 @@ bool MitMotor::turnOff()
 //Refactor this function.
 bool MitMotor::setTorque(float torque_setpoint )
 {
-    if(m_is_auto_mode_running)
-    {
-        if (m_is_ready_to_send)
-        {
-            m_is_ready_to_send = false;
-            return m_sendTorque(torque_setpoint);
-        }
+    //Normal mode (Polling based)
+    if(!m_is_auto_mode_running) return m_sendTorque(torque_setpoint);
 
-        else if ((millis() - m_last_response_time_ms) < MILLIS_LIMIT_UNTIL_RETRY) //In auto mode, test if we received response 
+
+    //Auto mode (Interrupt driven)
+    if (m_is_response_ready)
+    {
+        m_is_response_ready = false;
+        uint8_t irq = m_mcp2515.getInterrupts();
+        if (irq & MCP2515::CANINTF_MERRF)
         {
-            //Serial.println("All Ok, auto mode running normally");
-            return true; //Everything OK. Motor doesn't need communication "recovery"
+            Serial.print("\n\n!!!!!ERROR MERF (ERROR IN MESSAGE TRANSMISSION OR RECEPTION)!!!"); Serial.print(m_name); Serial.print("\n\n");
+            m_mcp2515.clearMERR();
+            m_mcp2515.clearInterrupts();
         }
-        else
+        if (irq & MCP2515::CANINTF_ERRIF)
         {
-            //Serial.print("\t Millis: "); Serial.print(millis()); Serial.print("\tLast message"); Serial.print(m_last_response_time_ms); Serial.print("\tRetrying to recover "); Serial.println(m_name); 
-            if ((millis() - m_last_retry_time_ms) > MILLIS_LIMIT_UNTIL_RETRY)
-            {
-                m_last_retry_time_ms = millis();
-                cli();
-                m_emptyMCP2515buffer();
-                sei();
-                m_sendTorque(torque_setpoint);
-            }
-            return false;
+            Serial.print("\n\n!!!!!!!ERROR BUFFER FULL!!!!!!"); Serial.print(m_name); Serial.print("\n\n");
+            m_mcp2515.clearRXnOVRFlags();
+            m_mcp2515.clearERRIF();
+            m_mcp2515.clearInterrupts();
         }
+        m_readMotorResponse();
+        return m_sendTorque(torque_setpoint);
     }
-    return m_sendTorque(torque_setpoint);
+
+    else if ((millis() - m_last_response_time_ms) < MILLIS_LIMIT_UNTIL_RETRY) //In case setTorque() was called again before message reception.
+    {
+        //Serial.println("All Ok, auto mode running normally");
+        return true; //Everything OK. Motor doesn't need communication "recovery"
+    }
+    else
+    {
+        //Serial.print("\t Millis: "); Serial.print(millis()); Serial.print("\tLast message"); Serial.print(m_last_response_time_ms); Serial.print("\tRetrying to recover "); Serial.println(m_name); 
+        if ((millis() - m_last_retry_time_ms) > MILLIS_LIMIT_UNTIL_RETRY)
+        {
+            m_last_retry_time_ms = millis();
+            m_emptyMCP2515buffer();
+            m_sendTorque(torque_setpoint);
+        }
+        return false;
+    }
 }
 
 
@@ -161,18 +175,14 @@ bool MitMotor::m_sendTorque(float torque_setpoint)
     can_msg.data[6] = t_int >> 8;
     can_msg.data[7] = t_int & 0xFF;
     //m_mcp2515.clearInterrupts();
-    cli();
     bool result = (m_mcp2515.sendMessage(&can_msg) == MCP2515::ERROR_OK); 
-    sei();
     return result;
 }
 
 
 
 bool MitMotor::m_readMotorResponse(){
-    cli();
     MCP2515::ERROR response_code = m_mcp2515.readMessage(&response_msg);
-    sei();
     if(response_code != MCP2515::ERROR::ERROR_OK)
     {
         return false;

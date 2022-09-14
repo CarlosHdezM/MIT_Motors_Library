@@ -33,7 +33,7 @@ class CanMotor{
         const float & velocity() const {return m_velocity;}
         const float & torque() const {return m_torque;}
         const char* name() const {return m_name;}
-
+        const bool & is_response_ready() const {return m_is_response_ready;}
 
     protected:
         //Protected member variables.
@@ -45,7 +45,7 @@ class CanMotor{
         const uint8_t m_interrupt_pin;
         bool m_is_auto_mode_running;
         unsigned long m_last_response_time_ms;
-        bool m_is_ready_to_send;
+        bool m_is_response_ready;
         unsigned long m_last_retry_time_ms;
         MCP2515 m_mcp2515;
         can_frame response_msg;

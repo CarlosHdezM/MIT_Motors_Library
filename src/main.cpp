@@ -4,7 +4,8 @@
 #include "RmdMotor.h"
 #include "array"
 #include <algorithm>
- 
+
+constexpr float PERIOD_USEC = 7000;
 
 #define FC 35
 #define KD 0.1f
@@ -12,7 +13,7 @@
 float P_REF = 0.0;
 
 // Kalman 1
-float T = 0.003;
+const float T = PERIOD_USEC/1000000.0;
 float R11 = 0.001;
 float R22 = 0.11;
 float Q11 = 0.001;
@@ -86,11 +87,13 @@ void setup()
     }
     Serial.println("All motors initialized succesfully");
 
+    Serial.print("Tau: "); Serial.println(T,10);
 }
 
 
 void controlMotors()
 {
+    digitalWrite(AUX_PIN_1,!digitalRead(AUX_PIN_1));
     // Kalman 1
     posk = posk + T * velk;
     velk = velk;
@@ -116,10 +119,11 @@ void controlMotors()
     pjj = (P21 + P12) / 2;
     P21 = pjj;
     P12 = pjj;
-    tau = -0.5 * ((posk) - 0.0) - 0.3 * velk;
-    if (!motors[0]->setTorque(tau,1000))
+    tau = -0.5 * ((posk) - 0.0) - 0.1 * velk;
+    if (!motors[0]->setTorque(tau))
         Serial.println("Message NOT Sent");
     if(!motors[0]->readMotorResponse(2000)) Serial.println("Message NOT Received");
+
     // if(!motors[0]->requestPosition()) Serial.println("Message NOT Sent");
     //if (!motors[0]->readMotorResponse(2000))
     //Serial.println("Message NOT Received");
@@ -132,7 +136,6 @@ void controlMotors()
     // Serial.print("\tVelocity: ");
     // Serial.println(motors[0]->velocity(), 4);
     // Serial.println();
-    digitalWrite(AUX_PIN_1,!digitalRead(AUX_PIN_1));
 }
 
 void loop ()
@@ -274,7 +277,7 @@ void loop ()
         //     motors[i]->startAutoMode(interrupt_handlers[i]);
         // }
         Serial.println("\nVamos a escribir y leer continuamente");
-        myTimer.begin(controlMotors,200);
+        myTimer.begin(controlMotors,PERIOD_USEC);
         myTimer.priority(32);
         theta = -motors[0]->position();
         while (digitalRead(BOTON) == HIGH)
@@ -335,7 +338,7 @@ void loop ()
         {
             for (uint8_t i = 0; i < NUM_MOTORS; i++)
             {
-                Serial.print("Starting auto mode for:"); Serial.println(motors[i]->name());
+                Serial.print("Starting auto modee for:"); Serial.println(motors[i]->name());
                 motors[i]->startAutoMode(interrupt_handlers[i]);
             }
             current_state = PRINT_MENU;
