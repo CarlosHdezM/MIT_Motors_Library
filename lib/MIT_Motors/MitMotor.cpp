@@ -94,8 +94,7 @@ bool MitMotor::setTorque(float torque_setpoint )
 
     else if ((millis() - m_last_response_time_ms) < MILLIS_LIMIT_UNTIL_RETRY) //In case setTorque() was called again before message reception.
     {
-        //Serial.println("All Ok, auto mode running normally");
-        return true; //Everything OK. Motor doesn't need communication "recovery"
+        return true;
     }
     else
     {

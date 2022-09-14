@@ -5,7 +5,7 @@
 #include <mcp2515.h>
 
 #define DEBUG_ENABLED 1
-#define MILLIS_LIMIT_UNTIL_RETRY 50
+#define MILLIS_LIMIT_UNTIL_RETRY 5
 
 
 class CanMotor{

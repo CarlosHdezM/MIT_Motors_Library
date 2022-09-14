@@ -5,37 +5,8 @@
 #include "array"
 #include <algorithm>
 
-constexpr float PERIOD_USEC = 7000;
-
-#define FC 35
-#define KD 0.1f
-#define KP 1.0f
-float P_REF = 0.0;
-
-// Kalman 1
-const float T = PERIOD_USEC/1000000.0;
-float R11 = 0.001;
-float R22 = 0.11;
-float Q11 = 0.001;
-float Q12 = 0.0001;
-float Q21 = 0.0001;
-float Q22 = 1;
-float P11 = 10;
-float P12 = 0;
-float P21 = 0;
-float P22 = 0.01;
-float pjj = 0;
-float posk = 0;
-float delta = 1;
-float velk = 0;
-float k11;
-float k12;
-float k21;
-float k22;
-
-float theta = 0;
-float vel_stim = 0;
-float tau = 0;
+constexpr float PERIOD_USEC = 1000;
+constexpr float T = PERIOD_USEC/1000000.0;
 
 // const uint8_t CS_PINS [NUM_MOTORS] =        {2 , 3 };
 // const uint8_t INTERRUPT_PINS[NUM_MOTORS] =  {27, 28};
@@ -53,18 +24,37 @@ MachineStates current_state = MachineStates::PRINT_MENU;
 
 CanMotor * motors[] = {
     new MitMotor(MitMotor::AK_10, CS_1, INT_1, "AK 10 1"),
-    //new RmdMotor(RmdMotor::RMD_X6, CS_2, INT_2, "RMD X6 1" )
+    new RmdMotor(RmdMotor::RMD_X6, CS_2, INT_2, "RMD X6 1" )
 };
 constexpr size_t NUM_MOTORS = sizeof(motors) / sizeof(motors[0]);
 
 
 void(*interrupt_handlers[NUM_MOTORS])() = {
     [](){motors[0]->handleInterrupt();},
-    //[](){motors[1]->handleInterrupt();}
+    [](){motors[1]->handleInterrupt();}
 };
 
-
 IntervalTimer myTimer;
+
+// Kalman 1
+float R11[NUM_MOTORS];
+float R22[NUM_MOTORS];
+float Q11[NUM_MOTORS];
+float Q12[NUM_MOTORS];
+float Q21[NUM_MOTORS];
+float Q22[NUM_MOTORS];
+float P11[NUM_MOTORS];
+float P12[NUM_MOTORS];
+float P21[NUM_MOTORS];
+float P22[NUM_MOTORS];
+float pjj[NUM_MOTORS];
+float posk[NUM_MOTORS];
+float delta[NUM_MOTORS];
+float velk[NUM_MOTORS];
+float k11[NUM_MOTORS];
+float k22[NUM_MOTORS];
+float tau[NUM_MOTORS];
+
 
 void setup()
 {
@@ -73,6 +63,25 @@ void setup()
     pinMode(AUX_PIN_1, OUTPUT);
     digitalWrite(AUX_PIN_1,LOW);
     delay(500);
+
+
+    for (uint8_t i = 0; i < NUM_MOTORS; i++)
+    {
+        R11[i] = 0.001;
+        R22[i] = 0.11;
+        Q11[i] = 0.001;
+        Q12[i] = 0.0001;
+        Q21[i] = 0.0001;
+        Q22[i] = 1;
+        P11[i] = 10;
+        P12[i] = 0;
+        P21[i] = 0;
+        P22[i] = 0.01;
+        posk[i] = 0;
+        delta[i] = 1;
+        velk[i] = 0;
+        tau[i] = 0;
+    }   
 
     for (auto & motor : motors)
     {
@@ -85,7 +94,7 @@ void setup()
             Serial.print("Retrying to turn on "); Serial.println(motor->name());
         }
     }
-    Serial.println("All motors initialized succesfully");
+    Serial.println("All motors initialized succesfullyy");
 
     Serial.print("Tau: "); Serial.println(T,10);
 }
@@ -94,48 +103,37 @@ void setup()
 void controlMotors()
 {
     digitalWrite(AUX_PIN_1,!digitalRead(AUX_PIN_1));
-    // Kalman 1
-    posk = posk + T * velk;
-    velk = velk;
-    P11 = P11 + P12 * T + P21 * T + P22 * T * T + Q11;
-    P12 = P12 + P22 * T + Q12;
-    P21 = P21 + P22 * T + Q21;
-    P22 = P22 + Q22;
-    delta = (P11 + R11) * (P22 + R22) - P21 * P12;
+    for(uint8_t i=0; i < NUM_MOTORS; i++)
+    {
+        // Kalmans
+        posk[i] = posk[i] + T * velk[i];
+        velk[i] = velk[i];
+        P11[i] = P11[i] + P12[i] * T + P21[i] * T + P22[i] * T * T + Q11[i];
+        P12[i] = P12[i] + P22[i] * T + Q12[i];
+        P21[i] = P21[i] + P22[i] * T + Q21[i];
+        P22[i] = P22[i] + Q22[i];
+        delta[i] = (P11[i] + R11[i]) * (P22[i] + R22[i]) - P21[i] * P12[i];
 
-    k11 = P11 / (P11 + R11);
-    k22 = P21 / (P11 + R11);
+        k11[i] = P11[i] / (P11[i] + R11[i]);
+        k22[i] = P21[i] / (P11[i] + R11[i]);
 
-    velk = velk + k22 * (motors[0]->position() - posk);
-    posk = posk + k11 * (motors[0]->position() - posk);
+        velk[i] = velk[i] + k22[i] * (motors[i]->position() - posk[i]);
+        posk[i] = posk[i] + k11[i] * (motors[i]->position() - posk[i]);
 
-    // velk = velk + k22 * (0 - posk);
-    // posk = posk + k11 * (0 - posk);
-
-    P11 = (1 - k11) * P11;
-    P12 = (1 - k11) * P12;
-    P21 = -k22 * P11 + P21;
-    P22 = -k22 * P12 + P22;
-    pjj = (P21 + P12) / 2;
-    P21 = pjj;
-    P12 = pjj;
-    tau = -0.5 * ((posk) - 0.0) - 0.1 * velk;
-    if (!motors[0]->setTorque(tau))
-        Serial.println("Message NOT Sent");
-    if(!motors[0]->readMotorResponse(2000)) Serial.println("Message NOT Received");
-
-    // if(!motors[0]->requestPosition()) Serial.println("Message NOT Sent");
-    //if (!motors[0]->readMotorResponse(2000))
-    //Serial.println("Message NOT Received");
-    // Serial.print("Position: ");
-    // Serial.print((motors[0]->position()), 4);
-    // Serial.print("\tTorque: ");
-    // Serial.print(motors[0]->torque(), 4);
-    // Serial.print("\tTorque calc: ");
-    // Serial.print(tau, 4);
-    // Serial.print("\tVelocity: ");
-    // Serial.println(motors[0]->velocity(), 4);
-    // Serial.println();
+        P11[i] = (1 - k11[i]) * P11[i];
+        P12[i] = (1 - k11[i]) * P12[i];
+        P21[i] = -k22[i] * P11[i] + P21[i];
+        P22[i] = -k22[i] * P12[i] + P22[i];
+        pjj[i] = (P21[i] + P12[i]) / 2;
+        P21[i] = pjj[i];
+        P12[i] = pjj[i];
+        tau[i] = -0.5 * ((posk[i]) - 0.0) - 0.1 * velk[i];
+        if (!motors[i]->setTorque(tau[i]))
+        {
+            Serial.print("Message NOT Sent to "); Serial.println(motors[i]->name());
+        }
+        //if(!motors[i]->readMotorResponse(2000)) Serial.println("Message NOT Received");
+    }
 }
 
 void loop ()
@@ -279,10 +277,18 @@ void loop ()
         Serial.println("\nVamos a escribir y leer continuamente");
         myTimer.begin(controlMotors,PERIOD_USEC);
         myTimer.priority(32);
-        theta = -motors[0]->position();
         while (digitalRead(BOTON) == HIGH)
         { 
             //Moved to the interrupt
+            for (uint8_t i = 0; i < NUM_MOTORS; i++)
+            {
+                Serial.print("Motor "); Serial.print(motors[i]->name()); 
+                Serial.print(":\tPosition: "); Serial.print(motors[i]->position(), 4);
+                Serial.print("\tTorque: "); Serial.print(motors[i]->torque(), 4);
+                Serial.print("\tVelocity: "); Serial.println(motors[i]->velocity(), 4);
+                Serial.println();
+            }
+            delay(20);
         }
         myTimer.end();
         for (uint8_t i = 0; i < NUM_MOTORS; i++)

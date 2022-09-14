@@ -135,6 +135,6 @@ bool CanMotor::m_sendAndReceiveBlocking(const can_frame & can_msg , unsigned lon
 void CanMotor::m_emptyMCP2515buffer()
 {
     can_frame devnull;
-    while(m_mcp2515.readMessage(&devnull) == MCP2515::ERROR_OK){ Serial.println("Vaciando buffer..."); }
+    while(m_mcp2515.readMessage(&devnull) == MCP2515::ERROR_OK){ /*Serial.println("Vaciando buffer...");*/ }
     return;
 }

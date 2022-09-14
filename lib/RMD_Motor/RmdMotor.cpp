@@ -23,6 +23,7 @@
 #define CURRENT_RAW_MAX       2000
 //Conversion Constants
 #define AMPS_TO_RAW           62.5f           //Constant to convert from Amperes to RAW (in the motor manufacturer range).
+#define RAW_TO_AMPS           0.016f           //Constant to convert from RAW to Amperes (in the motor manufacturer range).
 #define RAD                   0.01745329251f   //(pi/180)grad to rad 
 
 
@@ -259,12 +260,12 @@ bool RmdMotor::m_readMotorResponse()
         case SET_TORQUE_COMMAND:
         case UPDATE_STATUS_COMMAND:
             m_temperature = response_msg.data[1];
-            m_torque = (response_msg.data[2] << 8) | (response_msg.data[3]);
-            m_velocity = (response_msg.data[4] << 8) | (response_msg.data[5]);
+            m_torque = ((response_msg.data[2] << 8) | (response_msg.data[3])) * m_motor_type.KT  * RAW_TO_AMPS;
+            m_velocity = ((response_msg.data[4] << 8) | (response_msg.data[5])) * RAD;
             break;
 
         case REQUEST_POS_COMMAND:
-            m_position = (((((response_msg.data[4] << 24) | (response_msg.data[3] << 16) | (response_msg.data[2] << 8) | (response_msg.data[1])))/(m_motor_type.reduction))/** RAD*/);
+            m_position = (((((response_msg.data[4] << 24) | (response_msg.data[3] << 16) | (response_msg.data[2] << 8) | (response_msg.data[1])))/(m_motor_type.reduction))* RAD);
             break;
             
         case SET_ZERO_POS_COMMAND:
