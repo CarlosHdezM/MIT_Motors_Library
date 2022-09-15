@@ -128,6 +128,7 @@ void controlMotors()
         P21[i] = pjj[i];
         P12[i] = pjj[i];
         tau[i] = -0.5 * ((posk[i]) - 0.0) - 0.1 * velk[i];
+        tau[i] = 0.7;
         if (!motors[i]->setTorque(tau[i]))
         {
             Serial.print("Message NOT Sent to "); Serial.println(motors[i]->name());
@@ -232,11 +233,37 @@ void loop ()
 
         case SET_TORQUE_ZERO:
             Serial.print("\nEstableciendo el torque a 0\n");
-            for (uint8_t i = 0; i < NUM_MOTORS; i++)
+            while (digitalRead(BOTON) == HIGH)
             {
-                if (motors[i]->setTorque(0)) {Serial.print("Current 0 setpoint sent to "); Serial.println(motors[i]->name());}
+                for (uint8_t i = 1; i < NUM_MOTORS; i++)
+                {
+                    if (motors[i]->setTorque(0.7,1000)) {/*Serial.print("Current 0 setpoint sent to "); Serial.println(motors[i]->name());*/}
+                    else {Serial.print("Failed setting torque cero to "); Serial.println(motors[i]->name());}
+                    if (!motors[i]->readMotorResponse(2000)) {Serial.print("No response from: "); Serial.println(motors[i]->name());}
+                    else
+                    {
+                        Serial.print("Motor "); Serial.print(motors[i]->name()); 
+                        Serial.print(":\tPosition: "); Serial.print(motors[i]->position(), 4);
+                        Serial.print("\tTorque: "); Serial.print(motors[i]->torque(), 4);
+                        Serial.print("\tVelocity: "); Serial.println(motors[i]->velocity(), 4);
+                        Serial.println();
+                    }
+                }
+            }
+            for (uint8_t i = 1; i < NUM_MOTORS; i++)
+            {
+                if (motors[i]->setTorque(0.0,1000)) {/*Serial.print("Current 0 setpoint sent to "); Serial.println(motors[i]->name());*/}
                 else {Serial.print("Failed setting torque cero to "); Serial.println(motors[i]->name());}
-            }            
+                if (!motors[i]->readMotorResponse(2000)) {Serial.print("No response from: "); Serial.println(motors[i]->name());}
+                else
+                {
+                    Serial.print("Motor "); Serial.print(motors[i]->name()); 
+                    Serial.print(":\tPosition: "); Serial.print(motors[i]->position(), 4);
+                    Serial.print("\tTorque: "); Serial.print(motors[i]->torque(), 4);
+                    Serial.print("\tVelocity: "); Serial.println(motors[i]->velocity(), 4);
+                    Serial.println();
+                }
+            }        
             current_state = MachineStates::PRINT_MENU;
             break;
 
@@ -279,7 +306,7 @@ void loop ()
         while (digitalRead(BOTON) == HIGH)
         { 
             //El control se esta ejecutando en la interrupcion periodica.
-            for (uint8_t i = 0; i < NUM_MOTORS; i++)
+            for (uint8_t i = 1; i < NUM_MOTORS; i++)
             {
                 Serial.print("Motor "); Serial.print(motors[i]->name()); 
                 Serial.print(":\tPosition: "); Serial.print(motors[i]->position(), 4);
@@ -287,7 +314,7 @@ void loop ()
                 Serial.print("\tVelocity: "); Serial.println(motors[i]->velocity(), 4);
                 Serial.println();
             }
-            delay(20);
+            delay(1);
         }
         myTimer.end();
         for (uint8_t i = 0; i < NUM_MOTORS; i++)

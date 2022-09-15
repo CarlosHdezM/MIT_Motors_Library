@@ -259,12 +259,12 @@ bool RmdMotor::m_readMotorResponse()
         case SET_TORQUE_COMMAND:
         case UPDATE_STATUS_COMMAND:
             m_temperature = response_msg.data[1];
-            m_torque = ((response_msg.data[3] << 8) | (response_msg.data[2])) * m_motor_type.KT  * RAW_TO_AMPS;
-            m_velocity = ((response_msg.data[5] << 8) | (response_msg.data[4])) * RAD;
+            m_torque = (int16_t(response_msg.data[3] << 8) | int16_t(response_msg.data[2])) * m_motor_type.KT  * RAW_TO_AMPS;
+            m_velocity = (int16_t(response_msg.data[5] << 8) | int16_t(response_msg.data[4])) * RAD;
             break;
 
         case REQUEST_POS_COMMAND:
-            m_position = (((((response_msg.data[4] << 24) | (response_msg.data[3] << 16) | (response_msg.data[2] << 8) | (response_msg.data[1])))/(m_motor_type.reduction))* RAD);
+            m_position = ((((response_msg.data[4] << 24) | (response_msg.data[3] << 16) | (response_msg.data[2] << 8) | (response_msg.data[1]))/(m_motor_type.reduction))* RAD);
             break;
             
         case SET_ZERO_POS_COMMAND:
