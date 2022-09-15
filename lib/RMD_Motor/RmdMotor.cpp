@@ -228,7 +228,6 @@ bool RmdMotor::requestPosition()
 
 bool RmdMotor::m_sendTorque(float torque_setpoint)
 {
-    
     can_frame can_msg;
     int16_t torque = constrain(((int16_t)(((torque_setpoint)/m_motor_type.KT)*AMPS_TO_RAW)), CURRENT_RAW_MIN, CURRENT_RAW_MAX);
     can_msg.can_id  = 0x141;
@@ -260,8 +259,8 @@ bool RmdMotor::m_readMotorResponse()
         case SET_TORQUE_COMMAND:
         case UPDATE_STATUS_COMMAND:
             m_temperature = response_msg.data[1];
-            m_torque = ((response_msg.data[2] << 8) | (response_msg.data[3])) * m_motor_type.KT  * RAW_TO_AMPS;
-            m_velocity = ((response_msg.data[4] << 8) | (response_msg.data[5])) * RAD;
+            m_torque = ((response_msg.data[3] << 8) | (response_msg.data[2])) * m_motor_type.KT  * RAW_TO_AMPS;
+            m_velocity = ((response_msg.data[5] << 8) | (response_msg.data[4])) * RAD;
             break;
 
         case REQUEST_POS_COMMAND:

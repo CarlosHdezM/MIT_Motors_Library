@@ -39,7 +39,7 @@ class RmdMotor : public CanMotor{
     private:
         //Private member variables
         const MotorType m_motor_type;
-        uint8_t m_temperature;
+        int8_t m_temperature;
         volatile bool m_curr_state = 0;
 
         //Private member functions that this class defines (overrides from the base):
