@@ -12,6 +12,7 @@ class MitMotor : public CanMotor{
             const float T_MIN;
             const float T_MAX;
             const float P_DIVIDER;
+            const float DIRECTION_SIGN;
             static const float P_MIN;
             static const float P_MAX;
             static const float V_MIN;
@@ -20,7 +21,7 @@ class MitMotor : public CanMotor{
             static const float KP_MAX;
             static const float KD_MIN;
             static const float KD_MAX;
-            constexpr MotorType(float t_min, float t_max, float p_div) : T_MIN(t_min), T_MAX(t_max), P_DIVIDER(p_div){}
+            constexpr MotorType(float t_min, float t_max, float p_div, float direction_sign) : T_MIN(t_min), T_MAX(t_max), P_DIVIDER(p_div), DIRECTION_SIGN(direction_sign){}
         };
         static const MotorType AK_10;
         static const MotorType GIM;

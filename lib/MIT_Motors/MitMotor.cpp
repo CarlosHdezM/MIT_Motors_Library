@@ -5,8 +5,8 @@
 
 
 //Definition of static constants. 
-const MitMotor::MotorType MitMotor::AK_10{-18.0f, 18.0f, 1.0f};
-const MitMotor::MotorType MitMotor::GIM{-4.0f, 4.0f, -2.0f};
+const MitMotor::MotorType MitMotor::AK_10{-18.0f, 18.0f, 1.0f, 1.0f};
+const MitMotor::MotorType MitMotor::GIM{-4.0f, 4.0f, 2.0f, -1.0f};
 const float MitMotor::MotorType::P_MIN = -12.5f;
 const float MitMotor::MotorType::P_MAX =  12.5f;
 const float MitMotor::MotorType::V_MIN = -65.0f;
@@ -160,7 +160,7 @@ bool MitMotor::m_sendTorque(float torque_setpoint)
     can_frame can_msg;
 
     /// limit data to be within bounds ///
-    float t_ff = constrain(torque_setpoint, m_motor_type.T_MIN, m_motor_type.T_MAX);
+    float t_ff = constrain(torque_setpoint, m_motor_type.T_MIN, m_motor_type.T_MAX)*m_motor_type.DIRECTION_SIGN;
     unsigned int t_int  = m_float_to_uint(t_ff, m_motor_type.T_MIN, m_motor_type.T_MAX);
 
     can_msg.can_id  = 0x01;
@@ -191,9 +191,9 @@ bool MitMotor::m_readMotorResponse(){
     unsigned int v_int_rx = (response_msg.data[3] << 4) | (response_msg.data[4] >> 4);
     unsigned int t_int_rx = ((response_msg.data[4] & 0xF) << 8) | response_msg.data[5];
     /// convert uints to floats ///
-    m_position = (m_uint_to_float(p_int_rx, m_motor_type.P_MIN, m_motor_type.P_MAX, 16))/m_motor_type.P_DIVIDER;
-    m_velocity = m_uint_to_float(v_int_rx, m_motor_type.V_MIN, m_motor_type.V_MAX, 12);
-    m_torque = m_uint_to_float(t_int_rx, m_motor_type.T_MIN,  m_motor_type.T_MAX, 12);
+    m_position = (m_uint_to_float(p_int_rx, m_motor_type.P_MIN, m_motor_type.P_MAX, 16)) / m_motor_type.P_DIVIDER * m_motor_type.DIRECTION_SIGN;
+    m_velocity = m_uint_to_float(v_int_rx, m_motor_type.V_MIN, m_motor_type.V_MAX, 12) * m_motor_type.DIRECTION_SIGN;
+    m_torque = m_uint_to_float(t_int_rx, m_motor_type.T_MIN,  m_motor_type.T_MAX, 12) * m_motor_type.DIRECTION_SIGN * m_motor_type.P_DIVIDER;
     return true;
 }
 

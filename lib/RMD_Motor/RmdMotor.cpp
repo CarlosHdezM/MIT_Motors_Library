@@ -7,10 +7,10 @@
 #define TURN_OFF_COMMAND      0X80
 #define UPDATE_STATUS_COMMAND 0x9C
 //Motors Parameters
-#define REDUCTION_1_TO_1      100.00f
-#define REDUCTION_6_TO_1      600.00f
+#define REDUCTION_1_TO_1      1.00f
+#define REDUCTION_6_TO_1      6.00f
 #define REDUCTION_6_2_TO_1    6.20f
-#define REDUCTION_9_TO_1      900.00f
+#define REDUCTION_9_TO_1      9.00f
 #define L5015_KT              0.08f
 #define X6_KT                 0.88f
 #define X8_PRO_V1_KT          3.30f
@@ -260,11 +260,11 @@ bool RmdMotor::m_readMotorResponse()
         case UPDATE_STATUS_COMMAND:
             m_temperature = response_msg.data[1];
             m_torque = (int16_t(response_msg.data[3] << 8) | int16_t(response_msg.data[2])) * m_motor_type.KT  * RAW_TO_AMPS;
-            m_velocity = (int16_t(response_msg.data[5] << 8) | int16_t(response_msg.data[4])) * RAD;
+            m_velocity = (int16_t(response_msg.data[5] << 8) | int16_t(response_msg.data[4])) * RAD / m_motor_type.reduction;
             break;
 
         case REQUEST_POS_COMMAND:
-            m_position = ((((response_msg.data[4] << 24) | (response_msg.data[3] << 16) | (response_msg.data[2] << 8) | (response_msg.data[1]))/(m_motor_type.reduction))* RAD);
+            m_position = ((((response_msg.data[4] << 24) | (response_msg.data[3] << 16) | (response_msg.data[2] << 8) | (response_msg.data[1]))/(m_motor_type.reduction * 100.0f))* RAD);
             break;
             
         case SET_ZERO_POS_COMMAND:
