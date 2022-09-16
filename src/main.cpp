@@ -5,11 +5,10 @@
 #include "array"
 #include <algorithm>
 
-constexpr float PERIOD_USEC = 300;
+constexpr float PERIOD_USEC = 100;
 constexpr float T = PERIOD_USEC/1000000.0;
 
-// const uint8_t CS_PINS [NUM_MOTORS] =        {2 , 3 };
-// const uint8_t INTERRUPT_PINS[NUM_MOTORS] =  {27, 28};
+
 #define CS_1 2
 #define CS_2 3
 #define INT_1 27
@@ -23,8 +22,8 @@ MachineStates current_state = MachineStates::PRINT_MENU;
 
 
 CanMotor * motors[] = {
-    new MitMotor(MitMotor::GIM, CS_1, INT_1, "GIM"),
-    new RmdMotor(RmdMotor::RMD_X6, CS_2, INT_2, "RMD X6 1" )
+    new RmdMotor(RmdMotor::RMD_X6, CS_1, INT_1, "RMD X6"),
+    new RmdMotor(RmdMotor::RMD_L5015, CS_2, INT_2, "RMD L5015" )
 };
 constexpr size_t NUM_MOTORS = sizeof(motors) / sizeof(motors[0]);
 
@@ -103,7 +102,7 @@ void setup()
 void controlMotors()
 {
     digitalWrite(AUX_PIN_1,!digitalRead(AUX_PIN_1));
-    for(uint8_t i=0; i < NUM_MOTORS; i++)
+    for(uint8_t i = 1; i < NUM_MOTORS; i++)
     {
         // Kalmans
         posk[i] = posk[i] + T * velk[i];
@@ -127,7 +126,10 @@ void controlMotors()
         pjj[i] = (P21[i] + P12[i]) / 2;
         P21[i] = pjj[i];
         P12[i] = pjj[i];
-        tau[i] = -0.5 * ((posk[i]) - 0.0) - 0.1 * velk[i];
+        //tau[i] = -0.5 * ((posk[i]) - 0.0) - 0.1 * velk[i];
+        //tau[i] = -0.2 * ((posk[i]) - 0.0) - 0.02 * velk[i];
+        tau[0] = 0;        //tau[0] es el X6
+        tau[1] = -0.7;         //tau[1] es el X8
         if (!motors[i]->setTorque(tau[i]))
         {
             Serial.print("Message NOT Sent to "); Serial.println(motors[i]->name());
@@ -231,7 +233,26 @@ void loop ()
             break;
 
         case SET_TORQUE_ZERO:
-            Serial.println("\n\nMuchas gracias por seleccionar esta opcion, pero este caso no se usa para nada ahorita.\n\n");
+            //Serial.println("\n\nMuchas gracias por seleccionar esta opcion, pero este caso no se usa para nada ahorita.\n\n");
+            while (digitalRead(BOTON) == HIGH)
+            { 
+                //El control se esta ejecutando en la interrupcion periodica.
+                for (uint8_t i = 1; i < NUM_MOTORS; i++)
+                {
+                    motors[i]->setTorque(2.6, 1000);
+                    motors[i]->readMotorResponse(2000);
+                    Serial.print("Motor "); Serial.print(motors[i]->name()); 
+                    Serial.print(":\tPosition: "); Serial.print(motors[i]->position(), 4);
+                    Serial.print("\tTorque: "); Serial.print(motors[i]->torque(), 4);
+                    Serial.print("\tVelocity: "); Serial.println(motors[i]->velocity(), 4);
+                    Serial.println();
+                }
+            }
+            for (uint8_t i = 0; i < NUM_MOTORS; i++)
+            {
+                while (!motors[i]->setTorque(0, 1000)){}
+                while (!motors[i]->readMotorResponse(2000)){}
+            }
             current_state = MachineStates::PRINT_MENU;
             break;
 
@@ -274,7 +295,7 @@ void loop ()
         while (digitalRead(BOTON) == HIGH)
         { 
             //El control se esta ejecutando en la interrupcion periodica.
-            for (uint8_t i = 0; i < NUM_MOTORS; i++)
+            for (uint8_t i = 1; i < NUM_MOTORS; i++)
             {
                 Serial.print("Motor "); Serial.print(motors[i]->name()); 
                 Serial.print(":\tPosition: "); Serial.print(motors[i]->position(), 4);
@@ -289,6 +310,8 @@ void loop ()
         {
             Serial.print("Disabling auto mode for:"); Serial.println(motors[i]->name());
             motors[i]->stopAutoMode();
+            while (!motors[i]->setTorque(0, 1000)){}
+            while (!motors[i]->readMotorResponse(2000)){}
             while (!motors[i]->setTorque(0, 1000)){}
             while (!motors[i]->readMotorResponse(2000)){}
         }

@@ -25,17 +25,18 @@
 #define AMPS_TO_RAW           62.5f           //Constant to convert from Amperes to RAW (in the motor manufacturer range).
 #define RAW_TO_AMPS           0.016f           //Constant to convert from RAW to Amperes (in the motor manufacturer range).
 #define RAD                   0.01745329251f   //(pi/180)grad to rad 
-
+#define POSITIVE              1.0f
+#define NEGATIVE             -1.0f
 
 //Definition of static constants. 
-const RmdMotor::MotorType RmdMotor::RMD_X6{REDUCTION_6_TO_1, X6_KT};
-const RmdMotor::MotorType RmdMotor::RMD_X8_V1{REDUCTION_6_TO_1, X8_V1_KT};
-const RmdMotor::MotorType RmdMotor::RMD_X8_PRO_V1{REDUCTION_6_TO_1, X8_PRO_V1_KT};
-const RmdMotor::MotorType RmdMotor::RMD_X8_V2{REDUCTION_9_TO_1, X8_V2_KT};
-const RmdMotor::MotorType RmdMotor::RMD_X8_PRO_V2{REDUCTION_9_TO_1, X8_PRO_V2_KT};
-const RmdMotor::MotorType RmdMotor::RMD_X8_V3{REDUCTION_6_2_TO_1, X8_V3_KT};
-const RmdMotor::MotorType RmdMotor::RMD_X8_PRO_V3{REDUCTION_6_2_TO_1, X8_PRO_V3_KT};
-const RmdMotor::MotorType RmdMotor::RMD_L5015{REDUCTION_1_TO_1, L5015_KT};
+const RmdMotor::MotorType RmdMotor::RMD_X6{REDUCTION_6_TO_1, X6_KT, POSITIVE};                  
+const RmdMotor::MotorType RmdMotor::RMD_X8_V1{REDUCTION_6_TO_1, X8_V1_KT, NEGATIVE};
+const RmdMotor::MotorType RmdMotor::RMD_X8_PRO_V1{REDUCTION_6_TO_1, X8_PRO_V1_KT, NEGATIVE};
+//const RmdMotor::MotorType RmdMotor::RMD_X8_V2{REDUCTION_9_TO_1, X8_V2_KT, POSITIVE};
+//const RmdMotor::MotorType RmdMotor::RMD_X8_PRO_V2{REDUCTION_9_TO_1, X8_PRO_V2_KT, POSITIVE};
+const RmdMotor::MotorType RmdMotor::RMD_X8_V3{REDUCTION_6_2_TO_1, X8_V3_KT, POSITIVE};              //ToDo: Verify direction sign. 
+const RmdMotor::MotorType RmdMotor::RMD_X8_PRO_V3{REDUCTION_6_2_TO_1, X8_PRO_V3_KT, POSITIVE};      //ToDo: Verify direction sign.
+const RmdMotor::MotorType RmdMotor::RMD_L5015{REDUCTION_1_TO_1, L5015_KT, NEGATIVE};
 
 
 
@@ -229,7 +230,7 @@ bool RmdMotor::requestPosition()
 bool RmdMotor::m_sendTorque(float torque_setpoint)
 {
     can_frame can_msg;
-    int16_t torque = constrain(((int16_t)(((torque_setpoint)/m_motor_type.KT)*AMPS_TO_RAW)), CURRENT_RAW_MIN, CURRENT_RAW_MAX);
+    int16_t torque = constrain(((int16_t)(((torque_setpoint)/m_motor_type.KT)*AMPS_TO_RAW)), CURRENT_RAW_MIN, CURRENT_RAW_MAX) * m_motor_type.DIRECTION_SIGN;
     can_msg.can_id  = 0x141;
     can_msg.can_dlc = 0x08;
     can_msg.data[0] = SET_TORQUE_COMMAND;
@@ -259,12 +260,12 @@ bool RmdMotor::m_readMotorResponse()
         case SET_TORQUE_COMMAND:
         case UPDATE_STATUS_COMMAND:
             m_temperature = response_msg.data[1];
-            m_torque = (int16_t(response_msg.data[3] << 8) | int16_t(response_msg.data[2])) * m_motor_type.KT  * RAW_TO_AMPS;
-            m_velocity = (int16_t(response_msg.data[5] << 8) | int16_t(response_msg.data[4])) * RAD / m_motor_type.reduction;
+            m_torque = (int16_t(response_msg.data[3] << 8) | int16_t(response_msg.data[2])) * m_motor_type.KT  * RAW_TO_AMPS * m_motor_type.DIRECTION_SIGN;
+            m_velocity = (int16_t(response_msg.data[5] << 8) | int16_t(response_msg.data[4])) * RAD / m_motor_type.reduction * m_motor_type.DIRECTION_SIGN;
             break;
 
         case REQUEST_POS_COMMAND:
-            m_position = ((((response_msg.data[4] << 24) | (response_msg.data[3] << 16) | (response_msg.data[2] << 8) | (response_msg.data[1]))/(m_motor_type.reduction * 100.0f))* RAD);
+            m_position = ((((response_msg.data[4] << 24) | (response_msg.data[3] << 16) | (response_msg.data[2] << 8) | (response_msg.data[1]))/(m_motor_type.reduction * 100.0f))* RAD) * m_motor_type.DIRECTION_SIGN;
             break;
             
         case SET_ZERO_POS_COMMAND:

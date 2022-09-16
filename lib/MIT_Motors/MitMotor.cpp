@@ -160,7 +160,7 @@ bool MitMotor::m_sendTorque(float torque_setpoint)
     can_frame can_msg;
 
     /// limit data to be within bounds ///
-    float t_ff = constrain(torque_setpoint, m_motor_type.T_MIN, m_motor_type.T_MAX)*m_motor_type.DIRECTION_SIGN;
+    float t_ff = constrain(torque_setpoint, m_motor_type.T_MIN, m_motor_type.T_MAX) * m_motor_type.DIRECTION_SIGN;
     unsigned int t_int  = m_float_to_uint(t_ff, m_motor_type.T_MIN, m_motor_type.T_MAX);
 
     can_msg.can_id  = 0x01;

@@ -11,13 +11,14 @@ class RmdMotor : public CanMotor{
         struct MotorType{
             const float reduction;
             const float KT;
-            constexpr MotorType(float _reduction, float _kt) : reduction(_reduction), KT(_kt){}  //Constructor
+            const float DIRECTION_SIGN;
+            constexpr MotorType(float _reduction, float _kt, float _direction_sign) : reduction(_reduction), KT(_kt), DIRECTION_SIGN(_direction_sign){}  //Constructor
         };
         static const MotorType RMD_X6;
         static const MotorType RMD_X8_V1;
         static const MotorType RMD_X8_PRO_V1;
-        static const MotorType RMD_X8_V2;
-        static const MotorType RMD_X8_PRO_V2;
+        //static const MotorType RMD_X8_V2;
+        //static const MotorType RMD_X8_PRO_V2;
         static const MotorType RMD_X8_V3;
         static const MotorType RMD_X8_PRO_V3;
         static const MotorType RMD_L5015;
