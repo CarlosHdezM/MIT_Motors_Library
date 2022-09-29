@@ -4,33 +4,42 @@
 #include "RmdMotor.h"
 #include "array"
 #include <algorithm>
+#include "Encoder.h"
 
-constexpr float PERIOD_USEC = 100;
+constexpr float PERIOD_USEC = 1000;
 constexpr float T = PERIOD_USEC/1000000.0;
 
+#define CS_0 2
+#define CS_1 3
+#define CS_2 4
+#define CS_3 5
+#define CS_4 6
+#define CS_5 7
+#define CS_6 8
 
-#define CS_1 2
-#define CS_2 3
-#define INT_1 27
-#define INT_2 28
+#define INT_0 15
+#define INT_1 16
+#define INT_2 17
+#define INT_3 18
+#define INT_4 19
+#define INT_5 20
+#define INT_6 21
 
-#define BOTON 1
-#define AUX_PIN_1 9
+#define BOTON 0
+#define AUX_PIN_1 1
 
 
 MachineStates current_state = MachineStates::PRINT_MENU;
 
-
+/* Motores */
 CanMotor * motors[] = {
-    new RmdMotor(RmdMotor::RMD_X6, CS_1, INT_1, "RMD X6"),
-    new RmdMotor(RmdMotor::RMD_L5015, CS_2, INT_2, "RMD L5015" )
+    new MitMotor(MitMotor::GIM, CS_0, INT_0, "GIM_0")
 };
+
 constexpr size_t NUM_MOTORS = sizeof(motors) / sizeof(motors[0]);
 
-
 void(*interrupt_handlers[NUM_MOTORS])() = {
-    [](){motors[0]->handleInterrupt();},
-    [](){motors[1]->handleInterrupt();}
+    [](){motors[0]->handleInterrupt();}
 };
 
 IntervalTimer myTimer;
@@ -63,7 +72,6 @@ void setup()
     digitalWrite(AUX_PIN_1,LOW);
     delay(500);
 
-
     for (uint8_t i = 0; i < NUM_MOTORS; i++)
     {
         R11[i] = 0.001;
@@ -88,10 +96,10 @@ void setup()
         {
             Serial.print("Retrying to initialize "); Serial.print(motor->name()); Serial.print(" MCP2515");
         }
-        while(!motor->turnOn())
-        {
-            Serial.print("Retrying to turn on "); Serial.println(motor->name());
-        }
+        // while(!motor->turnOn())
+        // {
+        //     Serial.print("Retrying to turn on "); Serial.println(motor->name());
+        // }
     }
     Serial.println("All motors initialized succesfully");
 
@@ -102,7 +110,7 @@ void setup()
 void controlMotors()
 {
     digitalWrite(AUX_PIN_1,!digitalRead(AUX_PIN_1));
-    for(uint8_t i = 1; i < NUM_MOTORS; i++)
+    for(uint8_t i = 0; i < NUM_MOTORS; i++)
     {
         // Kalmans
         posk[i] = posk[i] + T * velk[i];
@@ -126,11 +134,8 @@ void controlMotors()
         pjj[i] = (P21[i] + P12[i]) / 2;
         P21[i] = pjj[i];
         P12[i] = pjj[i];
-        //tau[i] = -0.5 * ((posk[i]) - 0.0) - 0.1 * velk[i];
-        //tau[i] = -0.2 * ((posk[i]) - 0.0) - 0.02 * velk[i];
-        tau[0] = 0;        //tau[0] es el X6
-        tau[1] = -0.7;         //tau[1] es el X8
-        if (!motors[i]->setTorque(tau[i]))
+        tau[i] = -1 * ((posk[i]) - 0.0) - 0.05 * velk[i];
+        if (!motors[i]->setTorque(0))
         {
             Serial.print("Message NOT Sent to "); Serial.println(motors[i]->name());
         }
@@ -291,18 +296,20 @@ void loop ()
         }
         Serial.println("\nVamos a escribir y leer continuamente");
         myTimer.begin(controlMotors,PERIOD_USEC);
-        myTimer.priority(32);
+        myTimer.priority(200);
         while (digitalRead(BOTON) == HIGH)
         { 
             //El control se esta ejecutando en la interrupcion periodica.
-            for (uint8_t i = 1; i < NUM_MOTORS; i++)
+            for (uint8_t i = 0; i < NUM_MOTORS; i++)
             {
                 Serial.print("Motor "); Serial.print(motors[i]->name()); 
                 Serial.print(":\tPosition: "); Serial.print(motors[i]->position(), 4);
                 Serial.print("\tTorque: "); Serial.print(motors[i]->torque(), 4);
                 Serial.print("\tVelocity: "); Serial.println(motors[i]->velocity(), 4);
                 Serial.println();
+                Serial.print("\t");
             }
+            Serial.print("\n");
             delay(1);
         }
         myTimer.end();

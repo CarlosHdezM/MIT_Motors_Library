@@ -1,11 +1,12 @@
 #include "RmdMotor.h"
 
 //Commands
-#define SET_TORQUE_COMMAND    0xA1
-#define REQUEST_POS_COMMAND   0x92
-#define SET_ZERO_POS_COMMAND  0x19
-#define TURN_OFF_COMMAND      0X80
-#define UPDATE_STATUS_COMMAND 0x9C
+#define SET_TORQUE_COMMAND          0xA1
+#define REQUEST_POS_COMMAND         0x92
+#define SET_ZERO_POS_COMMAND_V1     0x19 // Only for RMD V1-V2
+#define SET_ZERO_POS_COMMAND_V3     0x64 // Only for RMD V3
+#define TURN_OFF_COMMAND            0X80
+#define UPDATE_STATUS_COMMAND       0x9C
 //Motors Parameters
 #define REDUCTION_1_TO_1      1.00f
 #define REDUCTION_6_TO_1      6.00f
@@ -34,8 +35,8 @@ const RmdMotor::MotorType RmdMotor::RMD_X8_V1{REDUCTION_6_TO_1, X8_V1_KT, NEGATI
 const RmdMotor::MotorType RmdMotor::RMD_X8_PRO_V1{REDUCTION_6_TO_1, X8_PRO_V1_KT, NEGATIVE};
 //const RmdMotor::MotorType RmdMotor::RMD_X8_V2{REDUCTION_9_TO_1, X8_V2_KT, POSITIVE};
 //const RmdMotor::MotorType RmdMotor::RMD_X8_PRO_V2{REDUCTION_9_TO_1, X8_PRO_V2_KT, POSITIVE};
-const RmdMotor::MotorType RmdMotor::RMD_X8_V3{REDUCTION_6_2_TO_1, X8_V3_KT, POSITIVE};              //ToDo: Verify direction sign. 
-const RmdMotor::MotorType RmdMotor::RMD_X8_PRO_V3{REDUCTION_6_2_TO_1, X8_PRO_V3_KT, POSITIVE};      //ToDo: Verify direction sign.
+const RmdMotor::MotorType RmdMotor::RMD_X8_V3{REDUCTION_1_TO_1, X8_V3_KT, POSITIVE};              //ToDo: Verify direction sign. 
+const RmdMotor::MotorType RmdMotor::RMD_X8_PRO_V3{REDUCTION_1_TO_1, X8_PRO_V3_KT, POSITIVE};      //ToDo: Verify direction sign.
 const RmdMotor::MotorType RmdMotor::RMD_L5015{REDUCTION_1_TO_1, L5015_KT, NEGATIVE};
 
 
@@ -178,9 +179,18 @@ bool RmdMotor::setCurrentPositionAsZero()
 {
     stopAutoMode();
     can_frame can_msg;
+    int command; 
+    if (m_motor_type.KT == X8_V3_KT || m_motor_type.KT == X8_PRO_V3_KT)
+    {
+        command = SET_ZERO_POS_COMMAND_V3;
+    }
+    else
+    {
+        command = SET_ZERO_POS_COMMAND_V1;
+    }
     can_msg.can_id  = 0x141;
     can_msg.can_dlc = 0x08;
-    can_msg.data[0] = SET_ZERO_POS_COMMAND;
+    can_msg.data[0] = command;
     can_msg.data[1] = 0x00;
     can_msg.data[2] = 0x00;
     can_msg.data[3] = 0x00;
@@ -265,10 +275,18 @@ bool RmdMotor::m_readMotorResponse()
             break;
 
         case REQUEST_POS_COMMAND:
-            m_position = ((((response_msg.data[4] << 24) | (response_msg.data[3] << 16) | (response_msg.data[2] << 8) | (response_msg.data[1]))/(m_motor_type.reduction * 100.0f))* RAD) * m_motor_type.DIRECTION_SIGN;
+            if (m_motor_type.KT == X8_V3_KT || m_motor_type.KT == X8_PRO_V3_KT)
+            {
+                m_position = ((((response_msg.data[7] << 24) | (response_msg.data[6] << 16) | (response_msg.data[5] << 8) | (response_msg.data[4]))/(m_motor_type.reduction * 100.0f))* RAD) * m_motor_type.DIRECTION_SIGN; //! v3
+            }
+            else
+            {
+                m_position = ((((response_msg.data[4] << 24) | (response_msg.data[3] << 16) | (response_msg.data[2] << 8) | (response_msg.data[1]))/(m_motor_type.reduction * 100.0f))* RAD) * m_motor_type.DIRECTION_SIGN; //! rmd v1, v2
+            }
             break;
             
-        case SET_ZERO_POS_COMMAND:
+        case SET_ZERO_POS_COMMAND_V1:
+        case SET_ZERO_POS_COMMAND_V3:
             Serial.print("Recibida confirmación de seteo de cero. Motor "); Serial.println(m_name); Serial.println("!!!!NECESARIO REINICIAR ALIMENTACIÓN DEL MOTOR PARA QUE SEA VALIDO EL NUEVO CERO Y NO EXPLOTE ALV!!!");
             break;
 
