@@ -96,10 +96,10 @@ void setup()
         {
             Serial.print("Retrying to initialize "); Serial.print(motor->name()); Serial.print(" MCP2515");
         }
-        // while(!motor->turnOn())
-        // {
-        //     Serial.print("Retrying to turn on "); Serial.println(motor->name());
-        // }
+        while(!motor->turnOn())
+        {
+            Serial.print("Retrying to turn on "); Serial.println(motor->name());
+        }
     }
     Serial.println("All motors initialized succesfully");
 
